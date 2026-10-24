@@ -20,7 +20,7 @@ export default function Home() {
               Skills
             </a>
             <a href="/lambda" className="transition hover:text-brass-hot">
-              Lambda Demo
+              Sandbox
             </a>
             <a
               href={LINKS.resume}

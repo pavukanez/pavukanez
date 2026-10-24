@@ -12,9 +12,9 @@ interface Message {
 
 export default function LambdaChatPage() {
   const [messages, setMessages] = useState<Message[]>([
-    { role: "system", content: "Welcome to the Lambda Chat Assistant.", timestamp: new Date() }
+    { role: "system", content: "Welcome to the Lambda Sandbox. Send a text query to invoke your Lambda function.", timestamp: new Date() }
   ])
-  const [input, setInput] = useState("{}")
+  const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -30,10 +30,10 @@ export default function LambdaChatPage() {
     e.preventDefault()
     if (!input.trim() || isLoading) return
 
-    let payload: unknown
-    try { payload = JSON.parse(input) } catch { payload = { raw: input } }
+    const query = input.trim()
+    const payload = { query }
 
-    const userMessage: Message = { role: "user", content: formatJson(input), timestamp: new Date() }
+    const userMessage: Message = { role: "user", content: query, timestamp: new Date() }
     const assistantMessage: Message = { role: "assistant", content: "", timestamp: new Date(), isLoading: true }
 
     setMessages((prev) => [...prev, userMessage, assistantMessage])
@@ -104,9 +104,9 @@ export default function LambdaChatPage() {
 
       <main className="mx-auto max-w-3xl px-5 py-16 pb-32">
         <div className="mb-10 text-center">
-          <p className="text-xs font-medium uppercase tracking-[0.28em] text-brass">Lambda Integration</p>
-          <h1 className="mt-3 font-display text-3xl text-paper md:text-4xl">Lambda Chat Assistant</h1>
-          <p className="mt-2 max-w-md mx-auto text-sm leading-relaxed text-muted">Converse with your Lambda function. Send JSON payloads and receive formatted responses in a chat interface.</p>
+          <p className="text-xs font-medium uppercase tracking-[0.28em] text-brass">Lambda Sandbox</p>
+          <h1 className="mt-3 font-display text-3xl text-paper md:text-4xl">Lambda Sandbox</h1>
+          <p className="mt-2 max-w-md mx-auto text-sm leading-relaxed text-muted">Test your Lambda function with natural language queries. No JSON required — just type what you want to do.</p>
         </div>
 
         <div className="rounded-2xl border border-line bg-ink-soft/70 backdrop-blur-sm flex flex-col h-[calc(100vh-24rem)] min-h-[500px] overflow-hidden">
@@ -152,10 +152,10 @@ export default function LambdaChatPage() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Enter JSON payload... (Shift+Enter for new line)"
+                placeholder="Enter your query... (Shift+Enter for new line)"
                 disabled={isLoading}
                 className="flex-1 min-h-[60px] max-h-40 rounded-xl border border-line bg-ink p-3 text-sm font-mono text-paper placeholder-muted focus:border-brass focus:outline-none focus:ring-1 focus:ring-brass resize-y disabled:opacity-50"
-                aria-label="Lambda payload input"
+                aria-label="Lambda query input"
               />
               <div className="flex flex-col gap-2 items-end">
                 <button type="submit" disabled={isLoading || !input.trim()} className="rounded-xl bg-brass px-5 py-2.5 text-sm font-semibold text-ink transition hover:bg-brass-hot disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
