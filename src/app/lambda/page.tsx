@@ -104,8 +104,8 @@ export default function LambdaChatPage() {
 
       <main className="mx-auto max-w-3xl px-5 py-16 pb-32">
         <div className="mb-10 text-center">
-          <p className="text-xs font-medium uppercase tracking-[0.28em] text-brass">Lambda Sandbox</p>
-          <h1 className="mt-3 font-display text-3xl text-paper md:text-4xl">Lambda Sandbox</h1>
+          <p className="text-xs font-medium uppercase tracking-[0.28em] text-brass">Daniel's Agent</p>
+          <h1 className="mt-3 font-display text-3xl text-paper md:text-4xl">Daniel's Agent</h1>
           <p className="mt-2 max-w-md mx-auto text-sm leading-relaxed text-muted">Test your Lambda function with natural language queries. No JSON required — just type what you want to do.</p>
         </div>
 
