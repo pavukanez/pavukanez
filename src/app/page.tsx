@@ -3,6 +3,7 @@ import Experience from '@/components/Experience';
 import Skills from '@/components/Skills';
 import Footer from '@/components/Footer';
 import LambdaDemo from '@/components/LambdaDemo';
+import { LINKS } from '@/lib/data';
 
 export default function Home() {
   return (
@@ -21,6 +22,13 @@ export default function Home() {
             </a>
             <a href="#lambda-demo" className="transition hover:text-brass-hot">
               Lambda Demo
+            </a>
+            <a
+              href={LINKS.resume}
+              download="NguyenPham_SoftwareEngineer.pdf"
+              className="transition hover:text-brass-hot"
+            >
+              Résumé
             </a>
           </div>
         </nav>
