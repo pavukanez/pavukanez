@@ -2,7 +2,6 @@ import Hero from '@/components/Hero';
 import Experience from '@/components/Experience';
 import Skills from '@/components/Skills';
 import Footer from '@/components/Footer';
-import LambdaDemo from '@/components/LambdaDemo';
 import { LINKS } from '@/lib/data';
 
 export default function Home() {
@@ -20,7 +19,7 @@ export default function Home() {
             <a href="#skills" className="transition hover:text-brass-hot">
               Skills
             </a>
-            <a href="#lambda-demo" className="transition hover:text-brass-hot">
+            <a href="/lambda" className="transition hover:text-brass-hot">
               Lambda Demo
             </a>
             <a
@@ -38,7 +37,6 @@ export default function Home() {
         <Hero />
         <Experience />
         <Skills />
-        <LambdaDemo />
       </main>
       <Footer />
     </div>
