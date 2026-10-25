@@ -39,6 +39,7 @@ export default function LambdaChatPage() {
 
     setMessages((prev) => [...prev, userMessage, assistantMessage])
     setIsLoading(true)
+    setInput("") // Auto-clear input
 
     try {
       const res = await fetch("/api/lambda/invoke", {
@@ -83,6 +84,12 @@ export default function LambdaChatPage() {
       e.preventDefault()
       handleSubmit(e as unknown as React.FormEvent)
     }
+  }
+
+  const handleQuickQuery = (query: string) => {
+    if (isLoading) return
+    setInput(query)
+    handleSubmit({ preventDefault: () => {} } as unknown as React.FormEvent)
   }
 
   return (
@@ -151,7 +158,26 @@ export default function LambdaChatPage() {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Quick Query Buttons */}
           <div className="border-t border-line p-4 bg-ink/50">
+            <div className="flex flex-wrap gap-2 justify-center mb-3">
+              <button
+                type="button"
+                onClick={() => handleQuickQuery("Who are you?")}
+                disabled={isLoading}
+                className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30"
+              >
+                Who are you?
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickQuery("Who is Daniel?")}
+                disabled={isLoading}
+                className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30"
+              >
+                Who is Daniel?
+              </button>
+            </div>
             <form onSubmit={handleSubmit} className="flex gap-3">
               <textarea
                 value={input}
