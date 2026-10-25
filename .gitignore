@@ -44,3 +44,4 @@ next-env.d.ts
 # Resume build artifacts (keep only .tex source)
 resume/*
 !resume/*.tex
+.env*
