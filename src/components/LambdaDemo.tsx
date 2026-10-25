@@ -10,7 +10,7 @@ interface LambdaResponse {
 }
 
 export default function LambdaDemo() {
-  const [input, setInput] = useState('{"query": "Hello from Next.js on Vercel!"}');
+  const [input, setInput] = useState('{"query": "Hello from cache-busted Vercel!"}');
   const [response, setResponse] = useState<LambdaResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
