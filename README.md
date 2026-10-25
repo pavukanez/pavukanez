@@ -1,72 +1,44 @@
 # Daniel Pham (Nguyen Pham)
 
-**Software Engineer** | 3 Years of Experience | US Citizen  
-📧 nguyenpham121998@gmail.com | 🔗 [LinkedIn](https://linkedin.com/in/pavukanez) | 💻 [GitHub](https://github.com/pavukanez)
+**Software Engineer** • 3 YOE • US Citizen • [Email](mailto:nguyenpham121998@gmail.com) • [LinkedIn](https://linkedin.com/in/pavukanez) • [GitHub](https://github.com/pavukanez)
 
 ---
 
-## About Me
-
-Software Engineer with 3 years of professional experience building scalable backend systems, AI/ML pipelines, and cloud-native infrastructure. Currently focused on AI agents for infrastructure automation, MLOps, and observability platforms. Certified Kubernetes Application Developer (CKAD).
-
----
-
-## Experience
-
-### **Cisco** — Software Engineer | Raleigh, NC  
-*Jun 2024 – Jul 2026*  
-- Managed on-call rotations for **14 internal OpenShift clusters**, performing incident response and troubleshooting to maintain infrastructure availability  
-- Engineered **LangGraph AI agents** that automatically execute diagnostic commands, investigate live alerts, and generate root cause analysis documentation, reducing manual on-call investigation time by **65%**  
-- Owned end-to-end **data connectors for AI agents**, integrating Splunk, Grafana, and Prometheus APIs to fetch logs, metrics, and traces for automated root cause analysis  
-- Developed and launched **time-series ML models on OpenShift AI** using data from Grafana to detect cross-cluster anomalies and configuration bugs  
-- Optimized **Jenkins pipelines** using a dual-layer (Docker base/app) build strategy, accelerating CI/CD execution speeds by **50%**  
-- Led vulnerability remediation for **10+ core repositories** using SonarQube and Corona (SAST/SCA), achieving **100% resolution** of high-severity security flaws
-
-### **Amazon Web Services** — Software Engineer Intern | Seattle, WA  
-*May 2023 – Aug 2023*  
-- Developed a **generative AI chatbot** using LangChain and React on AWS Lambda, enabling semantic search to eliminate manual document lookup  
-- Engineered a **RAG pipeline** to ingest documents from S3 into a Chroma vector database on EC2, enabling efficient semantic retrieval for LLM queries  
-- Evaluated and benchmarked diverse **foundation models and text-embedding architectures** using Amazon SageMaker for downstream generative AI tasks
-
-### **220C Banh Mi & Coffee** — Software Engineer | Charlotte, NC  
-*Mar 2021 – Sep 2022*  
-- Architected and launched a **full-stack web application** for online food ordering using React, Express, and Node.js, raising monthly transactions by **15%**  
-- Integrated **Stripe API** for secure payments and implemented real-time MongoDB synchronization, improving user engagement by **30%**  
-- Deployed backend on Heroku and frontend on Netlify, maintaining **99.9% uptime** with <15 min alert resolution  
-- Built an **automated SMS notification system** via Stripe webhooks and Gmail API, cutting kitchen prep times by **20%**
-
-### **TIAA** — Software Engineer Intern | Charlotte, NC  
-*Jun 2022 – Aug 2022*  
-- Developed a **Django survey platform** with an NLP engine to match responses with optimal data analytics tools  
-- Engineered **custom web scrapers with Selenium** to aggregate technical resources into a knowledge base for automated recommendations
-
-### **Novozymes** — Software Engineer Intern | Franklinton, NC  
-*Feb 2022 – Dec 2022*  
-- Developed **reusable Django UI components**, eliminating code duplication across multiple internal applications  
-- Implemented **automated unit tests** integrated into GitLab CI/CD pipelines, significantly reducing debugging time
+### 🎯 Focus
+Building **AI agents for infrastructure automation**, MLOps pipelines, and observability platforms. CKAD certified.
 
 ---
 
-## Technical Skills
+### 💼 Experience
 
-**Languages & Frameworks:** Python, Java, JavaScript, TypeScript, React, Next.js, Node.js, Express, LangChain, LangGraph, Flask, Django  
-**Cloud & Infrastructure:** AWS, OpenShift, Docker, Kubernetes, Jenkins, GitLab, Argo CD, CI/CD, Podman, Microservices  
-**Data & Observability:** SQL, MongoDB, PostgreSQL, Grafana, Splunk, Prometheus, MLOps  
-**Security & Quality:** SonarQube, SAST, SCA, Corona, Postman  
-**Other:** Firebase, Git
-
----
-
-## Certifications
-
-- **Certified Kubernetes Application Developer (CKAD)** — Jul 2025 – Jul 2027
+| Role | Company | Duration | Highlights |
+|------|---------|----------|------------|
+| **Software Engineer** | **Cisco** | Jun 2024 – Jul 2026 | • Managed 14 OpenShift clusters on-call<br>• Built LangGraph AI agents → **65% less** manual investigation<br>• Time-series ML models on OpenShift AI for anomaly detection<br>• Jenkins pipeline optimization → **50% faster** CI/CD<br>• 100% high-sev vuln remediation across 10+ repos |
+| **SWE Intern** | **AWS** | May – Aug 2023 | • GenAI chatbot (LangChain, Lambda, React)<br>• RAG pipeline (S3 → Chroma on EC2)<br>• SageMaker model benchmarking |
+| **Software Engineer** | **220C Banh Mi & Coffee** | Mar 2021 – Sep 2022 | • Full-stack ordering app (React/Node) → **+15% transactions**<br>• Stripe + MongoDB real-time sync → **+30% engagement**<br>• 99.9% uptime, <15 min alert response<br>• SMS automation via Stripe webhooks → **20% faster prep** |
+| **SWE Intern** | **TIAA** | Jun – Aug 2022 | • Django + NLP survey platform<br>• Selenium scrapers for knowledge base |
+| **SWE Intern** | **Novozymes** | Feb – Dec 2022 | • Reusable Django components<br>• GitLab CI/CD with automated testing |
 
 ---
 
-## Education
+### 🛠️ Tech Stack
 
-**University of North Carolina at Charlotte** — Bachelor of Science in Computer Science
+**Languages:** Python, Java, TypeScript, JavaScript  
+**Frameworks:** React, Next.js, Node.js, Express, LangChain, LangGraph, Django, Flask  
+**Cloud/Infra:** AWS, OpenShift, Kubernetes, Docker, Jenkins, GitLab, Argo CD, CI/CD  
+**Data/Obs:** PostgreSQL, MongoDB, Grafana, Splunk, Prometheus, MLOps  
+**Security:** SonarQube, SAST/SCA (Corona)
 
 ---
 
-*This repository serves as my GitHub profile/portfolio. The code here demonstrates my portfolio website built with Next.js, TypeScript, and AWS Lambda integration.*
+### 📜 Certifications
+**CKAD** (Jul 2025 – Jul 2027)
+
+---
+
+### 🎓 Education
+**B.S. Computer Science** — UNC Charlotte
+
+---
+
+*This repo is my portfolio website (Next.js + TypeScript + AWS Lambda).*
