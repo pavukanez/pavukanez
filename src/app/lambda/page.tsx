@@ -116,7 +116,7 @@ export default function LambdaChatPage() {
                   backgroundColor: msg.role === "user" ? "#c9a227" : msg.role === "system" ? "#2c3528" : "rgba(201,162,39,0.2)",
                   color: msg.role === "user" ? "#10140f" : msg.role === "system" ? "#b7b09f" : "#e4c15a",
                 }}>
-                  {msg.role === "user" ? "You" : msg.role === "system" ? "..." : "λ"}
+                  {msg.role === "user" ? "You" : msg.role === "system" ? "..." : "⚙️"}
                 </div>
                 <div className={"max-w-[80%] " + (msg.role === "user" ? "text-right" : "")}>
                   {msg.role !== "system" && (
@@ -164,7 +164,7 @@ export default function LambdaChatPage() {
               />
               <div className="flex flex-col gap-2 items-end">
                 <button type="submit" disabled={isLoading || !input.trim()} className="rounded-xl bg-brass px-5 py-2.5 text-sm font-semibold text-ink transition hover:bg-brass-hot disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
-                  {isLoading ? "Generating..." : "Send"}
+                  Send
                 </button>
               </div>
             </form>
