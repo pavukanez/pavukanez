@@ -38,7 +38,3 @@ Building **AI agents for infrastructure automation**, MLOps pipelines, and obser
 
 ### 🎓 Education
 **B.S. Computer Science** — UNC Charlotte
-
----
-
-*This repo is my portfolio website (Next.js + TypeScript + AWS Lambda).*
