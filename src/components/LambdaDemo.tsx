@@ -4,13 +4,13 @@ import { useState } from 'react';
 
 interface LambdaResponse {
   success: boolean;
-  data?: unknown;
+  response?: string;
   error?: string;
   requestId?: string;
 }
 
 export default function LambdaDemo() {
-  const [input, setInput] = useState('{"message": "Hello from Next.js on Vercel!"}');
+  const [input, setInput] = useState('{"query": "Hello from Next.js on Vercel!"}');
   const [response, setResponse] = useState<LambdaResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -70,7 +70,7 @@ export default function LambdaDemo() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               className="w-full min-h-[120px] rounded-xl border border-line bg-ink p-4 text-sm font-mono text-paper placeholder-muted focus:border-brass focus:outline-none focus:ring-1 focus:ring-brass resize-y"
-              placeholder='{"key": "value"}'
+              placeholder='{"query": "your question here"}'
               disabled={loading}
             />
           </div>
@@ -102,7 +102,7 @@ export default function LambdaDemo() {
                 )}
               </div>
               <pre className="whitespace-pre-wrap break-words">
-                {JSON.stringify(response.data ?? response.error, null, 2)}
+                {response.success ? response.response : JSON.stringify(response.error, null, 2)}
               </pre>
             </div>
           )}
