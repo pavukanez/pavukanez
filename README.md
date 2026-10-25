@@ -1,131 +1,72 @@
-# Daniel Pham - Portfolio & Lambda Demo
+# Daniel Pham (Nguyen Pham)
 
-A Next.js portfolio website hosted on Vercel with secure AWS Lambda invocation capability. Built with the same design system as the original Vite+React portfolio.
+**Software Engineer** | 3 Years of Experience | US Citizen  
+📧 nguyenpham121998@gmail.com | 🔗 [LinkedIn](https://linkedin.com/in/pavukanez) | 💻 [GitHub](https://github.com/pavukanez)
 
-## Features
+---
 
-- 🎨 **Design System**: Dark theme with ink/paper/brass colors, grain texture, Fraunces + Outfit fonts
-- 🔐 **Secure Lambda Invocation**: Server-side AWS SDK v3 with SigV4 signing - credentials never exposed to client
-- ⚡ **Next.js 14 App Router**: Modern React with TypeScript and Tailwind CSS
-- 🚀 **Vercel Ready**: Optimized for Vercel deployment with serverless functions
+## About Me
 
-## Quick Start
+Software Engineer with 3 years of professional experience building scalable backend systems, AI/ML pipelines, and cloud-native infrastructure. Currently focused on AI agents for infrastructure automation, MLOps, and observability platforms. Certified Kubernetes Application Developer (CKAD).
 
-### 1. Install Dependencies
+---
 
-```bash
-npm install
-```
+## Experience
 
-### 2. Configure Environment
+### **Cisco** — Software Engineer | Raleigh, NC  
+*Jun 2024 – Jul 2026*  
+- Managed on-call rotations for **14 internal OpenShift clusters**, performing incident response and troubleshooting to maintain infrastructure availability  
+- Engineered **LangGraph AI agents** that automatically execute diagnostic commands, investigate live alerts, and generate root cause analysis documentation, reducing manual on-call investigation time by **65%**  
+- Owned end-to-end **data connectors for AI agents**, integrating Splunk, Grafana, and Prometheus APIs to fetch logs, metrics, and traces for automated root cause analysis  
+- Developed and launched **time-series ML models on OpenShift AI** using data from Grafana to detect cross-cluster anomalies and configuration bugs  
+- Optimized **Jenkins pipelines** using a dual-layer (Docker base/app) build strategy, accelerating CI/CD execution speeds by **50%**  
+- Led vulnerability remediation for **10+ core repositories** using SonarQube and Corona (SAST/SCA), achieving **100% resolution** of high-severity security flaws
 
-```bash
-cp .env.example .env.local
-```
+### **Amazon Web Services** — Software Engineer Intern | Seattle, WA  
+*May 2023 – Aug 2023*  
+- Developed a **generative AI chatbot** using LangChain and React on AWS Lambda, enabling semantic search to eliminate manual document lookup  
+- Engineered a **RAG pipeline** to ingest documents from S3 into a Chroma vector database on EC2, enabling efficient semantic retrieval for LLM queries  
+- Evaluated and benchmarked diverse **foundation models and text-embedding architectures** using Amazon SageMaker for downstream generative AI tasks
 
-Edit `.env.local` with your AWS credentials and Lambda function name:
+### **220C Banh Mi & Coffee** — Software Engineer | Charlotte, NC  
+*Mar 2021 – Sep 2022*  
+- Architected and launched a **full-stack web application** for online food ordering using React, Express, and Node.js, raising monthly transactions by **15%**  
+- Integrated **Stripe API** for secure payments and implemented real-time MongoDB synchronization, improving user engagement by **30%**  
+- Deployed backend on Heroku and frontend on Netlify, maintaining **99.9% uptime** with <15 min alert resolution  
+- Built an **automated SMS notification system** via Stripe webhooks and Gmail API, cutting kitchen prep times by **20%**
 
-```env
-AWS_REGION=us-east-1
-LAMBDA_FUNCTION_NAME=your-lambda-function-name
-AWS_ACCESS_KEY_ID=your-access-key-id
-AWS_SECRET_ACCESS_KEY=your-secret-access-key
-```
+### **TIAA** — Software Engineer Intern | Charlotte, NC  
+*Jun 2022 – Aug 2022*  
+- Developed a **Django survey platform** with an NLP engine to match responses with optimal data analytics tools  
+- Engineered **custom web scrapers with Selenium** to aggregate technical resources into a knowledge base for automated recommendations
 
-### 3. Run Development Server
+### **Novozymes** — Software Engineer Intern | Franklinton, NC  
+*Feb 2022 – Dec 2022*  
+- Developed **reusable Django UI components**, eliminating code duplication across multiple internal applications  
+- Implemented **automated unit tests** integrated into GitLab CI/CD pipelines, significantly reducing debugging time
 
-```bash
-npm run dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) to view the portfolio.
+## Technical Skills
 
-### 4. Test Lambda Integration
+**Languages & Frameworks:** Python, Java, JavaScript, TypeScript, React, Next.js, Node.js, Express, LangChain, LangGraph, Flask, Django  
+**Cloud & Infrastructure:** AWS, OpenShift, Docker, Kubernetes, Jenkins, GitLab, Argo CD, CI/CD, Podman, Microservices  
+**Data & Observability:** SQL, MongoDB, PostgreSQL, Grafana, Splunk, Prometheus, MLOps  
+**Security & Quality:** SonarQube, SAST, SCA, Corona, Postman  
+**Other:** Firebase, Git
 
-Navigate to the "Lambda Demo" section and click "Invoke Lambda" to test the secure Lambda invocation.
+---
 
-## Deployment to Vercel
+## Certifications
 
-### 1. Push to GitHub
+- **Certified Kubernetes Application Developer (CKAD)** — Jul 2025 – Jul 2027
 
-```bash
-git add .
-git commit -m "Initial commit"
-git push origin main
-```
+---
 
-### 2. Import to Vercel
+## Education
 
-1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
-2. Click "Add New..." → "Project"
-3. Import your GitHub repository
-4. Configure Environment Variables in Vercel:
-   - `AWS_REGION`
-   - `LAMBDA_FUNCTION_NAME`
-   - `AWS_ACCESS_KEY_ID`
-   - `AWS_SECRET_ACCESS_KEY`
+**University of North Carolina at Charlotte** — Bachelor of Science in Computer Science
 
-### 3. Deploy
+---
 
-Vercel will automatically detect Next.js and deploy. The API route at `/api/lambda/invoke` will be available as a serverless function.
-
-## Security Notes
-
-- **Credentials never leave the server**: AWS credentials are only used in the Vercel serverless function (`/api/lambda/invoke`)
-- **SigV4 Signing**: AWS SDK v3 automatically signs requests with SigV4
-- **IAM Permissions**: The AWS credentials need `lambda:InvokeFunction` permission on the target Lambda
-- **No API Gateway Required**: Direct Lambda invocation via AWS SDK
-
-### Required IAM Policy
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": "lambda:InvokeFunction",
-      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:FUNCTION_NAME"
-    }
-  ]
-}
-```
-
-## Project Structure
-
-```
-src/
-├── app/
-│   ├── api/lambda/invoke/route.ts  # Secure Lambda invocation endpoint
-│   ├── globals.css                  # Global styles with design system
-│   ├── layout.tsx                   # Root layout with grain texture
-│   └── page.tsx                     # Main page composing all sections
-├── components/
-│   ├── CompanyLogo.tsx              # Company logo components
-│   ├── Experience.tsx               # Experience timeline
-│   ├── Footer.tsx                   # Site footer
-│   ├── Hero.tsx                     # Hero section
-│   ├── LambdaDemo.tsx               # Lambda invocation demo UI
-│   └── Skills.tsx                   # Interactive skills grid
-└── lib/
-    └── data.ts                      # Portfolio data (experience, skills, links)
-```
-
-## Design System
-
-Colors (CSS custom properties):
-- `--color-ink`: #10140f (background)
-- `--color-ink-soft`: #1a2118 (cards)
-- `--color-paper`: #efe7d6 (primary text)
-- `--color-muted`: #b7b09f (secondary text)
-- `--color-brass`: #c9a227 (accent)
-- `--color-brass-hot`: #e4c15a (accent hover)
-- `--color-line`: #2c3528 (borders)
-
-Fonts:
-- Display: Fraunces (Google Fonts)
-- Outfit (Google Fonts)
-
-## License
-
-MIT
+*This repository serves as my GitHub profile/portfolio. The code here demonstrates my portfolio website built with Next.js, TypeScript, and AWS Lambda integration.*
