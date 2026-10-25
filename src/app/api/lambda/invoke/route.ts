@@ -119,9 +119,25 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    // Extract just the response text from Lambda's body
+    let responseText = ''
+    if (responseData && typeof responseData === 'object' && 'body' in responseData) {
+      const lambdaBody = (responseData as Record<string, unknown>).body
+      if (typeof lambdaBody === 'string') {
+        try {
+          const parsed = JSON.parse(lambdaBody)
+          responseText = parsed.response || ''
+        } catch {
+          responseText = lambdaBody
+        }
+      } else if (typeof lambdaBody === 'object' && lambdaBody !== null && 'response' in lambdaBody) {
+        responseText = (lambdaBody as Record<string, unknown>).response as string
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      data: responseData,
+      response: responseText,
       requestId: response.$metadata.requestId,
     })
     
