@@ -12,7 +12,7 @@ interface Message {
 
 export default function LambdaChatPage() {
   const [messages, setMessages] = useState<Message[]>([
-    { role: "system", content: "Enter a message to chat with the agent", timestamp: new Date() }
+    { role: "system", content: "Ask me anything", timestamp: new Date() }
   ])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -56,7 +56,7 @@ export default function LambdaChatPage() {
             ? {
                 ...msg,
                 content: data.success
-                  ? "Success (RequestId: " + data.requestId + ")\n" + formatJson(JSON.stringify(data.data))
+                  ? data.response
                   : "Error" + (data.requestId ? " (RequestId: " + data.requestId + ")" : "") + "\n" + formatJson(JSON.stringify(data.error)),
                 isLoading: false,
                 requestId: data.requestId,
@@ -84,10 +84,6 @@ export default function LambdaChatPage() {
     }
   }
 
-  const clearChat = () => {
-    setMessages([{ role: "system", content: "Welcome to the Lambda Chat Assistant.", timestamp: new Date() }])
-  }
-
   return (
     <div className="relative min-h-screen overflow-x-hidden">
       <div className="grain" />
@@ -107,8 +103,8 @@ export default function LambdaChatPage() {
 
       <main className="mx-auto max-w-3xl px-5 py-16 pb-32">
         <div className="mb-10 text-center">
-          <h1 className="mt-3 font-display text-3xl text-paper md:text-4xl">Daniel's Agent</h1>
-          <p className="mt-2 max-w-md mx-auto text-sm leading-relaxed text-muted">Ask my agent anything</p>
+          <h1 className="mt-3 font-display text-3xl text-brass md:text-4xl">Daniel's Agent</h1>
+          <p className="mt-2 max-w-md mx-auto text-sm leading-relaxed text-muted">Built with AWS & OpenRouter</p>
         </div>
 
         <div className="rounded-2xl border border-line bg-ink-soft/70 backdrop-blur-sm flex flex-col h-[calc(100vh-24rem)] min-h-[500px] overflow-hidden">
@@ -163,7 +159,6 @@ export default function LambdaChatPage() {
                 <button type="submit" disabled={isLoading || !input.trim()} className="rounded-xl bg-brass px-5 py-2.5 text-sm font-semibold text-ink transition hover:bg-brass-hot disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
                   {isLoading ? "Invoking..." : "Send"}
                 </button>
-                <button type="button" onClick={clearChat} disabled={messages.length <= 1} className="rounded-xl border border-line bg-ink-soft px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30">Clear</button>
               </div>
             </form>
             <p className="mt-2 text-xs text-muted text-center">Press Enter to send · Shift+Enter for new line</p>
