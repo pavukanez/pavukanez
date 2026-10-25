@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import ReactMarkdown from "react-markdown"
 
 interface Message {
   role: "user" | "assistant" | "system"
@@ -132,10 +133,16 @@ export default function LambdaChatPage() {
                     {msg.isLoading ? (
                       <div className="flex items-center gap-2 text-muted">
                         <div className="w-4 h-4 border-2 border-brass/50 border-t-brass rounded-full animate-spin" />
-                        <span>Invoking Lambda...</span>
+                        <span>Generating...</span>
                       </div>
                     ) : (
-                      <pre className="whitespace-pre-wrap break-words text-inherit font-inherit">{msg.content}</pre>
+                      <div className="whitespace-pre-wrap break-words text-inherit font-inherit">
+                        {msg.role === "assistant" ? (
+                          <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        ) : (
+                          <pre>{msg.content}</pre>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -157,7 +164,7 @@ export default function LambdaChatPage() {
               />
               <div className="flex flex-col gap-2 items-end">
                 <button type="submit" disabled={isLoading || !input.trim()} className="rounded-xl bg-brass px-5 py-2.5 text-sm font-semibold text-ink transition hover:bg-brass-hot disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
-                  {isLoading ? "Invoking..." : "Send"}
+                  {isLoading ? "Generating..." : "Send"}
                 </button>
               </div>
             </form>
