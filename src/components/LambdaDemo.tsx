@@ -23,6 +23,7 @@ export default function LambdaDemo() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SANDBOX_API_KEY}`,
         },
         body: JSON.stringify({ payload: JSON.parse(input) }),
       });
