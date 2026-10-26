@@ -79,17 +79,58 @@ export default function LambdaChatPage() {
     }
   }
 
+  const handleQuickQuery = async (query: string) => {
+    if (isLoading) return
+    
+    setIsLoading(true)
+    const userMessage: Message = { role: "user", content: query, timestamp: new Date() }
+    const assistantMessage: Message = { role: "assistant", content: "", timestamp: new Date(), isLoading: true }
+    
+    setMessages((prev) => [...prev, userMessage, assistantMessage])
+    
+    try {
+      const res = await fetch("/api/lambda/invoke", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.NEXT_PUBLIC_SANDBOX_API_KEY || ''}`
+        },
+        body: JSON.stringify({ payload: { query } }),
+      })
+      const data = await res.json()
+      
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg === assistantMessage
+            ? {
+                ...msg,
+                content: data.success
+                  ? data.response
+                  : "Error" + (data.requestId ? " (RequestId: " + data.requestId + ")" : "") + "\n" + formatJson(JSON.stringify(data.error)),
+                isLoading: false,
+                requestId: data.requestId,
+              }
+            : msg
+        )
+      )
+    } catch (err) {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg === assistantMessage
+            ? { ...msg, content: "Network Error: " + (err instanceof Error ? err.message : "Unknown"), isLoading: false }
+            : msg
+        )
+      )
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSubmit(e as unknown as React.FormEvent)
     }
-  }
-
-  const handleQuickQuery = (query: string) => {
-    if (isLoading) return
-    setInput(query)
-    handleSubmit({ preventDefault: () => {} } as unknown as React.FormEvent)
   }
 
   return (
