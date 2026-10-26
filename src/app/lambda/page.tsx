@@ -32,14 +32,22 @@ export default function LambdaChatPage() {
     if (!input.trim() || isLoading) return
 
     const query = input.trim()
-    const payload = { query }
+    
+    // Build conversation history for context (last 6 messages = 3 exchanges)
+    const history = messages
+      .filter((m) => m.role !== "system" && !m.isLoading)
+      .slice(-6)
+      .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+      .join("\n")
+
+    const payload = { query, history }
 
     const userMessage: Message = { role: "user", content: query, timestamp: new Date() }
     const assistantMessage: Message = { role: "assistant", content: "", timestamp: new Date(), isLoading: true }
 
     setMessages((prev) => [...prev, userMessage, assistantMessage])
     setIsLoading(true)
-    setInput("") // Auto-clear input
+    setInput("")
 
     try {
       const res = await fetch("/api/lambda/invoke", {
@@ -82,6 +90,13 @@ export default function LambdaChatPage() {
   const handleQuickQuery = async (query: string) => {
     if (isLoading) return
     
+    // Build conversation history for context
+    const history = messages
+      .filter((m) => m.role !== "system" && !m.isLoading)
+      .slice(-6)
+      .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+      .join("\n")
+
     setIsLoading(true)
     const userMessage: Message = { role: "user", content: query, timestamp: new Date() }
     const assistantMessage: Message = { role: "assistant", content: "", timestamp: new Date(), isLoading: true }
@@ -95,7 +110,7 @@ export default function LambdaChatPage() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${process.env.NEXT_PUBLIC_SANDBOX_API_KEY || ''}`
         },
-        body: JSON.stringify({ payload: { query } }),
+        body: JSON.stringify({ payload: { query, history } }),
       })
       const data = await res.json()
       
@@ -145,7 +160,6 @@ export default function LambdaChatPage() {
             <a href="/#experience" className="transition hover:text-brass-hot">Experience</a>
             <a href="/#skills" className="transition hover:text-brass-hot">Skills</a>
             <a href="/" className="transition hover:text-brass-hot">Portfolio</a>
-            <a href="/NguyenPham_SoftwareEngineer.pdf" download className="transition hover:text-brass-hot">Résumé</a>
           </div>
         </nav>
       </header>
