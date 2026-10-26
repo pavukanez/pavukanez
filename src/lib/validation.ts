@@ -87,11 +87,17 @@ export function validateRequestBody(body: unknown): { valid: boolean; error?: st
     return { valid: false, error: 'Missing payload in request body' }
   }
   
-  // For text query: payload should be { query: string }
+  // For text query: payload should be { query: string, history?: string }
   if (typeof b.payload === 'object' && b.payload !== null) {
     const p = b.payload as Record<string, unknown>
     if (typeof p.query === 'string') {
-      return { valid: true, payload: { query: p.query } }
+      return { 
+        valid: true, 
+        payload: { 
+          query: p.query,
+          history: typeof p.history === 'string' ? p.history : ''
+        } 
+      }
     }
   }
   
