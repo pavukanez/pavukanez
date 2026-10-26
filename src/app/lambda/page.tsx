@@ -86,11 +86,11 @@ export default function LambdaChatPage() {
 
     const query = input.trim()
     
-    // Build conversation history for context (last 6 messages = 3 exchanges)
+    // Build conversation history for context (only user messages to avoid PII issues)
     const history = messages
-      .filter((m) => m.role !== "system" && !m.isLoading)
-      .slice(-6)
-      .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+      .filter((m) => m.role === "user" && !m.isLoading)
+      .slice(-5)  // Last 5 user messages
+      .map((m) => `User: ${m.content}`)
       .join("\n")
 
     const payload = { query, history }
@@ -150,11 +150,11 @@ export default function LambdaChatPage() {
   const handleQuickQuery = async (query: string) => {
     if (isLoading) return
     
-    // Build conversation history for context
+    // Build conversation history for context (only user messages to avoid PII issues)
     const history = messages
-      .filter((m) => m.role !== "system" && !m.isLoading)
-      .slice(-6)
-      .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+      .filter((m) => m.role === "user" && !m.isLoading)
+      .slice(-5)
+      .map((m) => `User: ${m.content}`)
       .join("\n")
 
     setIsLoading(true)
