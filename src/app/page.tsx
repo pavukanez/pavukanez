@@ -22,13 +22,6 @@ export default function Home() {
             <a href="/lambda" className="transition hover:text-brass-hot">
               Sandbox
             </a>
-            <a
-              href={LINKS.resume}
-              download="NguyenPham_SoftwareEngineer.pdf"
-              className="transition hover:text-brass-hot"
-            >
-              Résumé
-            </a>
           </div>
         </nav>
       </header>
