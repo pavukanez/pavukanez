@@ -51,14 +51,16 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const payload = bodyValidation.payload as { query: string } | unknown
+    const payload = bodyValidation.payload as { query: string; history?: string } | unknown
     
-    // For text query mode: payload = { query: string }
+    // For text query mode: payload = { query: string, history?: string }
     // For backward compat: allow any payload
     let query: string
+    let history: string = ''
     
     if (typeof payload === 'object' && payload !== null && 'query' in payload) {
-      const queryValidation = validateSandboxQuery((payload as { query: string }).query)
+      const p = payload as { query: string; history?: string }
+      const queryValidation = validateSandboxQuery(p.query)
       if (!queryValidation.valid) {
         return NextResponse.json(
           { success: false, error: queryValidation.error },
@@ -66,6 +68,7 @@ export async function POST(request: NextRequest) {
         )
       }
       query = queryValidation.sanitized
+      history = p.history || ''
     } else {
       // Legacy: stringify whatever payload was sent
       query = JSON.stringify(payload)
@@ -74,7 +77,7 @@ export async function POST(request: NextRequest) {
     // Invoke Lambda function
     const command = new InvokeCommand({
       FunctionName: LAMBDA_FUNCTION_NAME,
-      Payload: Buffer.from(JSON.stringify({ query })),
+      Payload: Buffer.from(JSON.stringify({ query, history })),
       InvocationType: 'RequestResponse',
     })
     
