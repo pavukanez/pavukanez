@@ -17,6 +17,7 @@ export default function LambdaChatPage() {
   ])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [userMessageCount, setUserMessageCount] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -25,6 +26,58 @@ export default function LambdaChatPage() {
 
   const formatJson = (str: string): string => {
     try { return JSON.stringify(JSON.parse(str), null, 2) } catch { return str }
+  }
+
+  // Summarize conversation every 5 user messages
+  const summarizeConversation = async (messagesToSummarize: Message[]) => {
+    const conversationText = messagesToSummarize
+      .filter((m) => m.role !== "system" && !m.isLoading)
+      .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+      .join("\n")
+
+    const summaryQuery = `Summarize this conversation in 2-3 sentences. Focus on: topics discussed, key facts revealed, user's interests. Be concise.\n\nConversation:\n${conversationText}`
+
+    try {
+      const res = await fetch("/api/lambda/invoke", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.NEXT_PUBLIC_SANDBOX_API_KEY || ''}`
+        },
+        body: JSON.stringify({ payload: { query: summaryQuery } }),
+      })
+      const data = await res.json()
+      return data.success ? data.response : "Summary unavailable"
+    } catch {
+      return "Summary unavailable"
+    }
+  }
+
+  const checkAndSummarize = async (currentMessages: Message[]) => {
+    // Count user messages (excluding system)
+    const userCount = currentMessages.filter(m => m.role === "user").length
+    
+    // Summarize every 5 user messages (after the 5th, 10th, 15th, etc.)
+    if (userCount > 0 && userCount % 5 === 0 && userCount !== userMessageCount) {
+      setUserMessageCount(userCount)
+      
+      // Get last 10 messages (5 exchanges) to summarize
+      const toSummarize = currentMessages
+        .filter((m) => m.role !== "system" && !m.isLoading)
+        .slice(-10)
+      
+      if (toSummarize.length >= 4) { // At least 2 exchanges
+        const summary = await summarizeConversation(toSummarize)
+        
+        // Keep: summary system message + last 4 messages (2 exchanges)
+        const recentMessages = currentMessages.slice(-4)
+        
+        setMessages((prev) => [
+          { role: "system", content: `Conversation summary: ${summary}`, timestamp: new Date() },
+          ...recentMessages
+        ])
+      }
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,6 +127,13 @@ export default function LambdaChatPage() {
             : msg
         )
       )
+      // Check if we need to summarize after this exchange
+      setTimeout(() => {
+        setMessages((current) => {
+          checkAndSummarize(current)
+          return current
+        })
+      }, 0)
     } catch (err) {
       setMessages((prev) =>
         prev.map((msg) =>
@@ -128,6 +188,13 @@ export default function LambdaChatPage() {
             : msg
         )
       )
+      // Check if we need to summarize after this exchange
+      setTimeout(() => {
+        setMessages((current) => {
+          checkAndSummarize(current)
+          return current
+        })
+      }, 0)
     } catch (err) {
       setMessages((prev) =>
         prev.map((msg) =>
