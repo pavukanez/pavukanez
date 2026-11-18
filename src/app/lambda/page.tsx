@@ -285,11 +285,27 @@ export default function LambdaChatPage() {
             <div className="flex flex-wrap gap-2 justify-center mb-3">
               <button
                 type="button"
-                onClick={() => handleQuickQuery("Who are you?")}
+                onClick={() => handleQuickQuery("reverse a linked list in python")}
                 disabled={isLoading}
                 className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30"
               >
-                Who are you?
+                reverse a linked list in python
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickQuery("what is a pod in kubernetes?")}
+                disabled={isLoading}
+                className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30"
+              >
+                what is a pod in kubernetes?
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickQuery("suggest a good Vietnamese cooking recipe")}
+                disabled={isLoading}
+                className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30"
+              >
+                suggest a good Vietnamese cooking recipe
               </button>
               <button
                 type="button"
