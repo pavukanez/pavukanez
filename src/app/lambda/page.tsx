@@ -282,12 +282,12 @@ export default function LambdaChatPage() {
 
           {/* Quick Query Buttons */}
           <div className="border-t border-line p-4 bg-ink/50">
-            <div className="flex flex-wrap gap-2 justify-center mb-3">
+            <div className="flex gap-2 mb-3 overflow-x-auto scroll-snap-x snap-mandatory pb-2 -mx-4 px-4 scrollbar-hide">
               <button
                 type="button"
                 onClick={() => handleQuickQuery("reverse a linked list in python")}
                 disabled={isLoading}
-                className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30"
+                className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30 whitespace-nowrap snap-start flex-shrink-0"
               >
                 reverse a linked list in python
               </button>
@@ -295,7 +295,7 @@ export default function LambdaChatPage() {
                 type="button"
                 onClick={() => handleQuickQuery("what is a pod in kubernetes?")}
                 disabled={isLoading}
-                className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30"
+                className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30 whitespace-nowrap snap-start flex-shrink-0"
               >
                 what is a pod in kubernetes?
               </button>
@@ -303,7 +303,7 @@ export default function LambdaChatPage() {
                 type="button"
                 onClick={() => handleQuickQuery("suggest a good Vietnamese cooking recipe")}
                 disabled={isLoading}
-                className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30"
+                className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30 whitespace-nowrap snap-start flex-shrink-0"
               >
                 suggest a good Vietnamese cooking recipe
               </button>
@@ -311,7 +311,7 @@ export default function LambdaChatPage() {
                 type="button"
                 onClick={() => handleQuickQuery("Who is Daniel?")}
                 disabled={isLoading}
-                className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30"
+                className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30 whitespace-nowrap snap-start flex-shrink-0"
               >
                 Who is Daniel?
               </button>
