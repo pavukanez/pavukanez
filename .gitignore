@@ -45,3 +45,6 @@ next-env.d.ts
 resume/*
 !resume/*.tex
 .env*
+
+# VS code workspace
+*.code-workspace
