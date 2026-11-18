@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { fromEnv, fromIni } from '@aws-sdk/credential-providers'
 import { validateSandboxQuery, validateRequestBody } from '@/lib/validation'
 import { createAuditLog, logError, getClientIp } from '@/lib/audit'
-import { createSigV4Signer, streamLambdaResponse } from '@/lib/sigv4'
+import { createSigV4Signer, streamLambdaResponse, callLambdaNonStreaming } from '@/lib/sigv4'
 
 // Initialize credentials for SigV4 signing
 const credentialsProvider = process.env.AWS_ACCESS_KEY_ID
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
       query = JSON.stringify(payload)
     }
 
-    const lambdaPayload = { query, history }
+    const lambdaPayload = { query, history, stream: wantsStream }
     const signer = await getSigV4Signer()
 
     if (wantsStream) {
@@ -138,12 +138,8 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Non-streaming: collect all chunks
-    let fullResponse = ''
-    for await (const chunk of streamLambdaResponse(LAMBDA_FUNCTION_URL, lambdaPayload, signer)) {
-      fullResponse += chunk
-    }
-
+    // Non-streaming: use regular Lambda response format
+    const lambdaResponse = await callLambdaNonStreaming(LAMBDA_FUNCTION_URL, lambdaPayload, signer)
     const latencyMs = Date.now() - startTime
 
     // Audit log
@@ -157,7 +153,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      response: fullResponse,
+      response: lambdaResponse.response,
+      model: lambdaResponse.model,
+      usage: lambdaResponse.usage,
       requestId,
     })
 

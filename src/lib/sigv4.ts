@@ -93,7 +93,7 @@ export function createSignableRequest(
  */
 export async function* streamLambdaResponse(
   functionUrl: string,
-  payload: { query: string; history?: string },
+  payload: { query: string; history?: string; stream?: boolean },
   signer: SignatureV4
 ): AsyncGenerator<string, void, unknown> {
   const body = JSON.stringify(payload)
@@ -167,5 +167,60 @@ export async function* streamLambdaResponse(
     }
   } finally {
     reader.releaseLock()
+  }
+}
+
+/**
+ * Call Lambda Function URL in non-streaming mode
+ * Returns parsed Lambda response
+ */
+export interface LambdaNonStreamingResponse {
+  response: string
+  model?: string
+  usage?: Record<string, any>
+}
+
+export async function callLambdaNonStreaming(
+  functionUrl: string,
+  payload: { query: string; history?: string; stream?: boolean },
+  signer: SignatureV4
+): Promise<LambdaNonStreamingResponse> {
+  const body = JSON.stringify(payload)
+  
+  const signableRequest = createSignableRequest(functionUrl, 'POST', body)
+  const signedHeaders = await signRequest(signer, signableRequest)
+  
+  const response = await fetch(functionUrl, {
+    method: 'POST',
+    headers: signedHeaders,
+    body,
+  })
+  
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Lambda Function URL error: ${response.status} ${errorText}`)
+  }
+  
+  // Parse Lambda's standard response format
+  const lambdaResponse = await response.json()
+  
+  // Lambda returns: { statusCode, headers, body: "{\"response\": \"...\", \"model\": \"...\", \"usage\": {...}}" }
+  if (lambdaResponse.body) {
+    const parsedBody = typeof lambdaResponse.body === 'string' 
+      ? JSON.parse(lambdaResponse.body) 
+      : lambdaResponse.body
+    
+    return {
+      response: parsedBody.response || '',
+      model: parsedBody.model,
+      usage: parsedBody.usage,
+    }
+  }
+  
+  // Fallback
+  return {
+    response: '',
+    model: undefined,
+    usage: undefined,
   }
 }
