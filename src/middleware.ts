@@ -3,22 +3,26 @@
  * 
  * Runs at Vercel Edge before API route executes
  * - Verifies Authorization: Bearer <SANDBOX_API_KEY>
- * - Rate limits: 60 req/min per IP
+ * - Rate limits: 60 req/min per IP (distributed via Upstash Redis)
  * 
- * Requires Vercel KV (free tier: 100k requests/month)
- * Alternative: use in-memory Map for single-instance (resets on deploy)
+ * Uses Upstash Redis for distributed rate limiting across Edge instances
+ * Free tier: 100k requests/day
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { Redis } from '@upstash/redis'
 import { SANDBOX_API_KEY } from '@/lib/auth'
 
 // Rate limit config
 const RATE_LIMIT = 60          // requests
 const WINDOW_SEC = 60          // 1 minute window
+const WINDOW_MS = WINDOW_SEC * 1000
 
-// In-memory fallback (resets on cold start / deploy)
-// For production, use Vercel KV: import { kv } from '@vercel/kv'
-const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
+// Upstash Redis client (Edge-compatible REST client)
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+})
 
 function getClientIp(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for')
@@ -28,22 +32,39 @@ function getClientIp(request: NextRequest): string {
   return 'anonymous'
 }
 
-async function checkRateLimit(ip: string): Promise<{ allowed: boolean; remaining: number }> {
+async function checkRateLimit(ip: string): Promise<{ allowed: boolean; remaining: number; retryAfter?: number }> {
   const now = Date.now()
   const key = `ratelimit:sandbox:${ip}`
-  const record = rateLimitStore.get(key)
-  
-  if (!record || now > record.resetAt) {
-    rateLimitStore.set(key, { count: 1, resetAt: now + WINDOW_SEC * 1000 })
-    return { allowed: true, remaining: RATE_LIMIT - 1 }
+  const windowStart = now - WINDOW_MS
+
+  try {
+    // Remove expired entries (outside the window)
+    await redis.zremrangebyscore(key, 0, windowStart)
+
+    // Count current requests in window
+    const count = await redis.zcard(key)
+
+    if (count >= RATE_LIMIT) {
+      // Get oldest entry to calculate retry-after
+      const oldest = await redis.zrange(key, 0, 0, { withScores: true })
+      const resetAt = oldest.length > 0 ? (oldest[0] as { score: number }).score + WINDOW_MS : now + WINDOW_MS
+      const retryAfter = Math.ceil((resetAt - now) / 1000)
+      return { allowed: false, remaining: 0, retryAfter }
+    }
+
+    // Add current request with unique member (timestamp + random)
+    const member = `${now}-${Math.random().toString(36).slice(2)}`
+    await redis.zadd(key, { score: now, member })
+    
+    // Set TTL to auto-cleanup
+    await redis.expire(key, WINDOW_SEC)
+
+    return { allowed: true, remaining: RATE_LIMIT - count - 1 }
+  } catch (error) {
+    // Fail-open: allow request if Redis is unavailable
+    console.warn('[RateLimit] Redis error, failing open:', error)
+    return { allowed: true, remaining: RATE_LIMIT }
   }
-  
-  if (record.count >= RATE_LIMIT) {
-    return { allowed: false, remaining: 0 }
-  }
-  
-  record.count++
-  return { allowed: true, remaining: RATE_LIMIT - record.count }
 }
 
 export async function middleware(request: NextRequest) {
@@ -65,22 +86,23 @@ export async function middleware(request: NextRequest) {
   
   // 2. Rate Limiting: 60 req/min per IP
   const ip = getClientIp(request)
-  const { allowed, remaining } = await checkRateLimit(ip)
+  const { allowed, remaining, retryAfter } = await checkRateLimit(ip)
   
   if (!allowed) {
+    const retryAfterSec = retryAfter || WINDOW_SEC
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Rate limit exceeded. Try again in 60 seconds.',
-        retryAfter: WINDOW_SEC 
+        error: 'Rate limit exceeded. Try again later.',
+        retryAfter: retryAfterSec 
       },
       { 
         status: 429,
         headers: {
-          'Retry-After': String(WINDOW_SEC),
+          'Retry-After': String(retryAfterSec),
           'X-RateLimit-Limit': String(RATE_LIMIT),
           'X-RateLimit-Remaining': '0',
-          'X-RateLimit-Reset': String(Math.ceil((Date.now() + WINDOW_SEC * 1000) / 1000)),
+          'X-RateLimit-Reset': String(Math.ceil((Date.now() + retryAfterSec * 1000) / 1000)),
         }
       }
     )
