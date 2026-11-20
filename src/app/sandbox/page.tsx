@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from "react"
 import ReactMarkdown from "react-markdown"
+import GitHubRepoInput from "@/components/GitHubRepoInput"
+import RepoReviewPanel from "@/components/RepoReviewPanel"
 
 interface Message {
   role: "user" | "assistant" | "system"
@@ -19,10 +21,48 @@ export default function LambdaChatPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [userMessageCount, setUserMessageCount] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  
+  // GitHub repo review state
+  const [repoReview, setRepoReview] = useState<{
+    url: string
+    markdown: string
+    isLoading: boolean
+  } | null>(null)
+  const [pendingRepoAnalysis, setPendingRepoAnalysis] = useState<{
+    url: string
+    focus: string
+  } | null>(null)
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
 
   useEffect(() => { scrollToBottom() }, [messages])
+
+  // Handle pending repo analysis
+  useEffect(() => {
+    if (pendingRepoAnalysis) {
+      setRepoReview({ url: pendingRepoAnalysis.url, markdown: '', isLoading: true })
+      const focusText = pendingRepoAnalysis.focus ? ` Focus: ${pendingRepoAnalysis.focus}.` : ''
+      const reviewQuery = `Please review this GitHub repository: ${pendingRepoAnalysis.url}.${focusText} Use the iterative review pattern: fetch tree, select files, fetch files, review, iterate.`
+      
+      const userMessage: Message = { 
+        role: "user", 
+        content: reviewQuery, 
+        timestamp: new Date() 
+      }
+      setMessages(prev => [...prev, userMessage])
+      setPendingRepoAnalysis(null)
+    }
+  }, [pendingRepoAnalysis])
+
+  // Check for completed review in assistant messages
+  useEffect(() => {
+    const lastMessage = messages[messages.length - 1]
+    if (lastMessage && lastMessage.role === "assistant" && !lastMessage.isLoading) {
+      if (lastMessage.content.includes("## Code Review:") && repoReview) {
+        setRepoReview(prev => prev ? { ...prev, markdown: lastMessage.content, isLoading: false } : null)
+      }
+    }
+  }, [messages, repoReview])
 
   const formatJson = (str: string): string => {
     try { return JSON.stringify(JSON.parse(str), null, 2) } catch { return str }
@@ -85,6 +125,15 @@ export default function LambdaChatPage() {
 
     const query = input.trim()
     
+    // Check if input is a GitHub URL
+    const githubMatch = query.match(/^https?:\/\/github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)/)
+    if (githubMatch) {
+      // Trigger repo analysis with default focus
+      setPendingRepoAnalysis({ url: query, focus: '' })
+      setInput("")
+      return
+    }
+
     // Build conversation history for context (only user messages to avoid PII issues)
     const history = messages
       .filter((m) => m.role === "user" && !m.isLoading)
@@ -109,35 +158,32 @@ export default function LambdaChatPage() {
         },
         body: JSON.stringify({ payload }),
       })
+
       const data = await res.json()
 
       setMessages((prev) =>
-        prev.map((msg) =>
-          msg === assistantMessage
-            ? {
-                ...msg,
-                content: data.success
-                  ? data.response
-                  : "Error" + (data.requestId ? " (RequestId: " + data.requestId + ")" : "") + "\n" + formatJson(JSON.stringify(data.error)),
-                isLoading: false,
-                requestId: data.requestId,
-              }
-            : msg
+        prev.map((m) =>
+          m === assistantMessage
+            ? { ...m, content: data.success ? data.response : data.error, isLoading: false, requestId: data.requestId }
+            : m
         )
       )
-      // Check if we need to summarize after this exchange
-      setTimeout(() => {
-        setMessages((current) => {
-          checkAndSummarize(current)
-          return current
-        })
-      }, 0)
+
+      if (data.success) {
+        // Use setTimeout to ensure state update is processed
+        setTimeout(() => {
+          setMessages((current) => {
+            checkAndSummarize(current)
+            return current
+          })
+        }, 0)
+      }
     } catch (err) {
       setMessages((prev) =>
-        prev.map((msg) =>
-          msg === assistantMessage
-            ? { ...msg, content: "Network Error: " + (err instanceof Error ? err.message : "Unknown"), isLoading: false }
-            : msg
+        prev.map((m) =>
+          m === assistantMessage
+            ? { ...m, content: "Network Error: " + (err instanceof Error ? err.message : "Unknown"), isLoading: false }
+            : m
         )
       )
     } finally {
@@ -212,68 +258,137 @@ export default function LambdaChatPage() {
     }
   }
 
-  return (
-    <div className="relative min-h-screen overflow-x-hidden">
-      <div className="grain" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[28rem] bg-[radial-gradient(ellipse_at_top,_rgba(201,162,39,0.12),_transparent_55%)]" />
+  const handleRepoAnalyze = (url: string, focus?: string) => {
+    setPendingRepoAnalysis({ url, focus: focus || '' })
+  }
 
+  const handleRequestMoreFiles = (filePaths: string[]) => {
+    const followup = `Please also review these files: ${filePaths.join(', ')}`
+    setMessages(prev => [...prev, { role: "user", content: followup, timestamp: new Date() }])
+  }
+
+  return (
+    <div className="min-h-screen bg-ink flex flex-col">
       <header className="sticky top-0 z-40 border-b border-line/70 bg-ink/80 backdrop-blur-md">
         <nav className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 text-sm">
-          <a href="/" className="font-display text-lg tracking-tight text-paper">Daniel Pham</a>
+          <a href="/" className="font-display text-lg tracking-tight text-paper">
+            Daniel Pham
+          </a>
           <div className="flex gap-6 text-muted">
-            <a href="/#experience" className="transition hover:text-brass-hot">Experience</a>
-            <a href="/#skills" className="transition hover:text-brass-hot">Skills</a>
-            <a href="/" className="transition hover:text-brass-hot">Portfolio</a>
+            <a href="#experience" className="transition hover:text-brass-hot">
+              Experience
+            </a>
+            <a href="#skills" className="transition hover:text-brass-hot">
+              Skills
+            </a>
+            <a href="/sandbox" className="transition hover:text-brass-hot">
+              Sandbox
+            </a>
           </div>
         </nav>
       </header>
 
-      <main className="mx-auto max-w-3xl px-5 py-16 pb-32">
-        <div className="mb-10 text-center">
-          <h1 className="mt-3 font-display text-3xl text-brass md:text-4xl">Daniel's Agent</h1>
-          <p className="mt-2 max-w-md mx-auto text-sm leading-relaxed text-muted">Built with AWS & OpenRouter</p>
+      <main className="flex-1 mx-auto max-w-6xl w-full px-5 py-8">
+        <div className="mb-10 flex flex-col gap-4 md:mb-12 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.28em] text-brass">
+              AI Sandbox
+            </p>
+            <h2 className="mt-3 font-display text-3xl text-paper md:text-4xl">
+              gh-repo-reviewer
+            </h2>
+          </div>
+          <p className="max-w-md text-sm leading-relaxed text-muted md:text-right">
+            Paste a GitHub repository URL to get an iterative code review. 
+            Supports Python, TypeScript, Java, and Go. Public repos only.
+          </p>
         </div>
 
-        <div className="rounded-2xl border border-line bg-ink-soft/70 backdrop-blur-sm flex flex-col h-[calc(100vh-24rem)] min-h-[500px] overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-6 space-y-6" role="log" aria-live="polite">
-            {messages.map((msg, idx) => (
-              <div key={idx} className={"flex gap-3 " + (msg.role === "user" ? "flex-row-reverse" : "")}>
-                <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium" style={{
-                  backgroundColor: msg.role === "user" ? "#c9a227" : msg.role === "system" ? "#2c3528" : "rgba(201,162,39,0.2)",
-                  color: msg.role === "user" ? "#10140f" : msg.role === "system" ? "#b7b09f" : "#e4c15a",
-                }}>
-                  {msg.role === "user" ? "You" : msg.role === "system" ? "..." : "⚙️"}
-                </div>
-                <div className={"max-w-[80%] " + (msg.role === "user" ? "text-right" : "")}>
-                  {msg.role !== "system" && (
-                    <div className="text-xs text-muted mb-1">
-                      {msg.timestamp.toLocaleTimeString()}
-                      {msg.requestId && <> · <code className="text-[10px] bg-ink px-1 rounded">{msg.requestId.slice(0, 8)}...</code> </>}
+        {/* GitHub Repo Input */}
+        {!repoReview && (
+          <div className="mb-8 rounded-2xl border border-line bg-ink-soft/70 p-6 backdrop-blur-sm max-w-2xl">
+            <h3 className="text-lg font-medium text-paper mb-4">Analyze a Repository</h3>
+            <GitHubRepoInput 
+              onAnalyze={handleRepoAnalyze} 
+              disabled={isLoading}
+            />
+          </div>
+        )}
+
+        {/* Chat Interface */}
+        <div className="rounded-2xl border border-line bg-ink-soft/70 p-4 backdrop-blur-sm flex flex-col h-[60vh] min-h-[400px]">
+          <div className="flex-1 overflow-y-auto space-y-4 pb-4">
+            {messages.map((message, index) => {
+              if (message.role === "system" && message.content.startsWith("Conversation summary:")) {
+                return (
+                  <div key={index} className="text-xs text-muted italic border-t border-line pt-2">
+                    {message.content}
+                  </div>
+                )
+              }
+              if (message.role === "system" && message.content === "Ask me anything") {
+                return null
+              }
+
+              return (
+                <div
+                  key={index}
+                  className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""}`}
+                >
+                  <div
+                    className={`flex-1 max-w-[85%] ${message.role === "user" ? "text-right" : ""}`}
+                  >
+                    <div
+                      className={`inline-block rounded-2xl px-4 py-2 text-sm ${
+                        message.role === "user"
+                          ? "bg-brass text-ink"
+                          : "bg-ink text-paper border border-line"
+                      }`}
+                    >
+                      {message.isLoading ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-brass border-t-transparent rounded-full animate-spin" />
+                          <span>Thinking...</span>
+                        </div>
+                      ) : (
+                        <>
+                          {message.role === "assistant" ? (
+                            <ReactMarkdown
+                              components={{
+                                code: ({ children, ...props }) => (
+                                  <code {...props} className="bg-ink/50 px-1.5 py-0.5 rounded text-xs font-mono text-brass-hot">
+                                    {children}
+                                  </code>
+                                ),
+                                pre: ({ children, ...props }) => (
+                                  <pre {...props} className="bg-ink rounded-xl p-4 overflow-x-auto border border-line text-xs">
+                                    {children}
+                                  </pre>
+                                ),
+                                a: ({ href, children, ...props }) => (
+                                  <a href={href} target="_blank" rel="noopener noreferrer" className="text-brass-hot underline hover:text-brass" {...props}>
+                                    {children}
+                                  </a>
+                                ),
+                              }}
+                            >
+                              {message.content}
+                            </ReactMarkdown>
+                          ) : (
+                            <pre className="whitespace-pre-wrap break-words font-mono text-xs">{message.content}</pre>
+                          )}
+                        </>
+                      )}
                     </div>
-                  )}
-                  <div className="inline-block px-4 py-3 rounded-2xl text-sm" style={{
-                    backgroundColor: msg.role === "user" ? "rgba(201,162,39,0.1)" : msg.role === "system" ? "rgba(26,33,24,0.5)" : "#10140f",
-                    borderColor: msg.role === "user" ? "rgba(201,162,39,0.2)" : msg.role === "system" ? "rgba(44,53,40,0.5)" : "rgba(44,53,40,0.5)",
-                    borderRadius: msg.role === "user" ? "1rem 1rem 1rem 0" : msg.role === "system" ? "1rem" : "1rem 0 1rem 1rem",
-                  }}>
-                    {msg.isLoading ? (
-                      <div className="flex items-center gap-2 text-muted">
-                        <div className="w-4 h-4 border-2 border-brass/50 border-t-brass rounded-full animate-spin" />
-                        <span>Generating...</span>
-                      </div>
-                    ) : (
-                      <div className="whitespace-pre-wrap break-words text-inherit font-inherit">
-                        {msg.role === "assistant" ? (
-                          <ReactMarkdown>{msg.content}</ReactMarkdown>
-                        ) : (
-                          <pre>{msg.content}</pre>
-                        )}
-                      </div>
+                    {message.requestId && (
+                      <p className="mt-1 text-xs text-muted">
+                        RequestId: {message.requestId}
+                      </p>
                     )}
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
             <div ref={messagesEndRef} />
           </div>
 
@@ -282,35 +397,35 @@ export default function LambdaChatPage() {
             <div className="flex gap-2 mb-3 overflow-x-auto scroll-snap-x snap-mandatory pb-2 -mx-4 px-4 scrollbar-hide">
               <button
                 type="button"
-                onClick={() => handleQuickQuery("reverse a linked list in python")}
+                onClick={() => handleQuickQuery("who is Daniel Pham?")}
                 disabled={isLoading}
                 className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30 whitespace-nowrap snap-start flex-shrink-0"
               >
-                reverse a linked list in python
+                who is Daniel Pham?
               </button>
               <button
                 type="button"
-                onClick={() => handleQuickQuery("what is a pod in kubernetes?")}
+                onClick={() => handleQuickQuery("what is a pod in k8s?")}
                 disabled={isLoading}
                 className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30 whitespace-nowrap snap-start flex-shrink-0"
               >
-                what is a pod in kubernetes?
+                what is a pod in k8s?
               </button>
               <button
                 type="button"
-                onClick={() => handleQuickQuery("suggest a good Vietnamese cooking recipe")}
+                onClick={() => handleQuickQuery("suggest Vietnamese cooking recipe")}
                 disabled={isLoading}
                 className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30 whitespace-nowrap snap-start flex-shrink-0"
               >
-                suggest a good Vietnamese cooking recipe
+                suggest Vietnamese cooking recipe
               </button>
               <button
                 type="button"
-                onClick={() => handleQuickQuery("Who is Daniel?")}
+                onClick={() => handleQuickQuery("help me review my github repo")}
                 disabled={isLoading}
                 className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30 whitespace-nowrap snap-start flex-shrink-0"
               >
-                Who is Daniel?
+                help me review my github repo
               </button>
             </div>
             <form onSubmit={handleSubmit} className="flex gap-3">
@@ -337,6 +452,17 @@ export default function LambdaChatPage() {
       <footer className="border-t border-line px-5 py-10 text-center text-sm text-muted">
         © {new Date().getFullYear()} Daniel Pham • Software Engineer • Built to last.
       </footer>
+
+      {/* Repo Review Panel */}
+      {repoReview && (
+        <RepoReviewPanel
+          repoUrl={repoReview.url}
+          reviewMarkdown={repoReview.markdown}
+          isLoading={repoReview.isLoading}
+          onClose={() => setRepoReview(null)}
+          onRequestMoreFiles={handleRequestMoreFiles}
+        />
+      )}
     </div>
   )
 }

@@ -19,7 +19,7 @@ export default function Home() {
             <a href="#skills" className="transition hover:text-brass-hot">
               Skills
             </a>
-            <a href="/lambda" className="transition hover:text-brass-hot">
+            <a href="/sandbox" className="transition hover:text-brass-hot">
               Sandbox
             </a>
           </div>
