@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react"
 import ReactMarkdown from "react-markdown"
-import GitHubRepoInput from "@/components/GitHubRepoInput"
 import RepoReviewPanel from "@/components/RepoReviewPanel"
 
 interface Message {
@@ -125,11 +124,27 @@ export default function LambdaChatPage() {
 
     const query = input.trim()
     
-    // Check if input is a GitHub URL
-    const githubMatch = query.match(/^https?:\/\/github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)/)
-    if (githubMatch) {
-      // Trigger repo analysis with default focus
-      setPendingRepoAnalysis({ url: query, focus: '' })
+    // Check if input contains a GitHub URL (anywhere in the text)
+    const githubUrlMatch = query.match(/https?:\/\/github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)/)
+    
+    // Check for review-related intent keywords
+    const reviewKeywords = /review|analyze|audit|check|look at|examine|inspect|assess|evaluate/i
+    const hasReviewIntent = reviewKeywords.test(query)
+    
+    // If GitHub URL found AND review intent detected, trigger repo analysis
+    if (githubUrlMatch && hasReviewIntent) {
+      const url = githubUrlMatch[0]
+      // Extract focus from query if present
+      const focusMatch = query.match(/focus(?:ed)?\s+(?:on\s+)?(security|performance|architecture|best.?practices?|style|patterns?|maintainability)/i)
+      const focus = focusMatch ? focusMatch[1] : ''
+      setPendingRepoAnalysis({ url, focus })
+      setInput("")
+      return
+    }
+    
+    // Also trigger if the query IS just a GitHub URL (existing behavior)
+    if (githubUrlMatch && query.trim() === githubUrlMatch[0]) {
+      setPendingRepoAnalysis({ url: githubUrlMatch[0], focus: '' })
       setInput("")
       return
     }
@@ -299,21 +314,10 @@ export default function LambdaChatPage() {
             </h2>
           </div>
           <p className="max-w-md text-sm leading-relaxed text-muted md:text-right">
-            Paste a GitHub repository URL to get an iterative code review. 
+            Ask me anything or paste a GitHub repo URL to get an iterative code review covering security, best practices, performance, and architecture. 
             Supports Python, TypeScript, Java, and Go. Public repos only.
           </p>
         </div>
-
-        {/* GitHub Repo Input */}
-        {!repoReview && (
-          <div className="mb-8 rounded-2xl border border-line bg-ink-soft/70 p-6 backdrop-blur-sm max-w-2xl">
-            <h3 className="text-lg font-medium text-paper mb-4">Analyze a Repository</h3>
-            <GitHubRepoInput 
-              onAnalyze={handleRepoAnalyze} 
-              disabled={isLoading}
-            />
-          </div>
-        )}
 
         {/* Chat Interface */}
         <div className="rounded-2xl border border-line bg-ink-soft/70 p-4 backdrop-blur-sm flex flex-col h-[60vh] min-h-[400px]">
