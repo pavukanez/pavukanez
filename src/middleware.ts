@@ -73,18 +73,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
   
-  // 1. Authentication: Verify Bearer token
-  const authHeader = request.headers.get('authorization')
-  const expectedAuth = `Bearer ${SANDBOX_API_KEY}`
-  
-  if (!authHeader || authHeader !== expectedAuth) {
-    return NextResponse.json(
-      { success: false, error: 'Unauthorized: Invalid or missing API key' },
-      { status: 401 }
-    )
-  }
-  
-  // 2. Rate Limiting: 60 req/min per IP
+  // Rate Limiting: 60 req/min per IP (auth is handled by API route -> Lambda)
   const ip = getClientIp(request)
   const { allowed, remaining, retryAfter } = await checkRateLimit(ip)
   

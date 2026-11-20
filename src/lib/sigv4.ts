@@ -94,11 +94,12 @@ export function createSignableRequest(
 export async function* streamLambdaResponse(
   functionUrl: string,
   payload: { query: string; history?: string; stream?: boolean },
-  signer: SignatureV4
+  signer: SignatureV4,
+  extraHeaders: Record<string, string> = {}
 ): AsyncGenerator<string, void, unknown> {
   const body = JSON.stringify(payload)
   
-  const signableRequest = createSignableRequest(functionUrl, 'POST', body)
+  const signableRequest = createSignableRequest(functionUrl, 'POST', body, extraHeaders)
   const signedHeaders = await signRequest(signer, signableRequest)
   
   const response = await fetch(functionUrl, {
@@ -183,11 +184,12 @@ export interface LambdaNonStreamingResponse {
 export async function callLambdaNonStreaming(
   functionUrl: string,
   payload: { query: string; history?: string; stream?: boolean },
-  signer: SignatureV4
+  signer: SignatureV4,
+  extraHeaders: Record<string, string> = {}
 ): Promise<LambdaNonStreamingResponse> {
   const body = JSON.stringify(payload)
   
-  const signableRequest = createSignableRequest(functionUrl, 'POST', body)
+  const signableRequest = createSignableRequest(functionUrl, 'POST', body, extraHeaders)
   const signedHeaders = await signRequest(signer, signableRequest)
   
   const response = await fetch(functionUrl, {

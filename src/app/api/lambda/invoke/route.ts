@@ -89,13 +89,18 @@ export async function POST(request: NextRequest) {
     const lambdaPayload = { query, history, stream: wantsStream }
     const signer = await getSigV4Signer()
 
+    // Add Authorization header for Lambda (uses SANDBOX_API_KEY secret)
+    const lambdaHeaders = {
+      'Authorization': `Bearer ${process.env.SANDBOX_API_KEY}`,
+    }
+
     if (wantsStream) {
       // Streaming response via Server-Sent Events
       const encoder = new TextEncoder()
       const stream = new ReadableStream({
         async start(controller) {
           try {
-            for await (const chunk of streamLambdaResponse(LAMBDA_FUNCTION_URL, lambdaPayload, signer)) {
+            for await (const chunk of streamLambdaResponse(LAMBDA_FUNCTION_URL, lambdaPayload, signer, lambdaHeaders)) {
               const data = `data: ${JSON.stringify({ response: chunk })}\n\n`
               controller.enqueue(encoder.encode(data))
             }
@@ -139,7 +144,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Non-streaming: use regular Lambda response format
-    const lambdaResponse = await callLambdaNonStreaming(LAMBDA_FUNCTION_URL, lambdaPayload, signer)
+    const lambdaResponse = await callLambdaNonStreaming(LAMBDA_FUNCTION_URL, lambdaPayload, signer, lambdaHeaders)
     const latencyMs = Date.now() - startTime
 
     // Audit log
