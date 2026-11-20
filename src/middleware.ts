@@ -1,17 +1,18 @@
 /**
- * Edge Middleware: Authentication + Rate Limiting
+ * Edge Middleware: Rate Limiting
  * 
  * Runs at Vercel Edge before API route executes
- * - Verifies Authorization: Bearer <SANDBOX_API_KEY>
  * - Rate limits: 60 req/min per IP (distributed via Upstash Redis)
  * 
  * Uses Upstash Redis for distributed rate limiting across Edge instances
  * Free tier: 100k requests/day
+ * 
+ * Authentication is handled by AWS_IAM at the Lambda Function URL level.
+ * The Next.js API route signs requests with SigV4 using AWS credentials.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { Redis } from '@upstash/redis'
-import { SANDBOX_API_KEY } from '@/lib/auth'
 
 // Rate limit config
 const RATE_LIMIT = 60          // requests
@@ -73,7 +74,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
   
-  // Rate Limiting: 60 req/min per IP (auth is handled by API route -> Lambda)
+  // Rate Limiting: 60 req/min per IP (auth is handled by AWS_IAM at Lambda Function URL)
   const ip = getClientIp(request)
   const { allowed, remaining, retryAfter } = await checkRateLimit(ip)
   

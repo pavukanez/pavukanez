@@ -166,7 +166,6 @@ export default function LambdaChatPage() {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.NEXT_PUBLIC_SANDBOX_API_KEY || ''}`
         },
         body: JSON.stringify({ payload: { query, history } }),
       })

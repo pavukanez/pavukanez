@@ -89,10 +89,8 @@ export async function POST(request: NextRequest) {
     const lambdaPayload = { query, history, stream: wantsStream }
     const signer = await getSigV4Signer()
 
-    // Add Authorization header for Lambda (uses SANDBOX_API_KEY secret)
-    const lambdaHeaders = {
-      'Authorization': `Bearer ${process.env.SANDBOX_API_KEY}`,
-    }
+    // No custom Authorization header needed - AWS_IAM auth via SigV4 signing
+    const lambdaHeaders: Record<string, string> = {}
 
     if (wantsStream) {
       // Streaming response via Server-Sent Events
