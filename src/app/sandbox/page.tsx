@@ -702,19 +702,20 @@ export default function LambdaChatPage() {
               )
             })}
             <div ref={messagesEndRef} />
-            {messages.length > 1 && (
-              <div className="mt-6 text-center">
-                <button
-                  onClick={handleNewChat}
-                  disabled={isLoading}
-                  className="text-xs text-muted hover:text-brass-hot transition disabled:opacity-30"
-                  title="Start a new conversation"
-                >
-                  All set here? Start a new topic.
-                </button>
-              </div>
-            )}
           </div>
+
+          {messages.length > 1 && (
+            <div className="border-t border-line p-4 bg-ink/50 text-center">
+              <button
+                onClick={handleNewChat}
+                disabled={isLoading}
+                className="text-xs text-muted hover:text-brass-hot transition disabled:opacity-30"
+                title="Start a new conversation"
+              >
+                All set here? Start a new topic.
+              </button>
+            </div>
+          )}
 
           {/* Quick Query Buttons */}
           <div className="border-t border-line p-4 bg-ink/50">
