@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import ReactMarkdown from "react-markdown"
-import RepoReviewPanel from "@/components/RepoReviewPanel"
+import CodeReviewMessage from "@/components/CodeReviewMessage"
 
 interface Message {
   role: "user" | "assistant" | "system"
@@ -10,58 +10,158 @@ interface Message {
   timestamp: Date
   isLoading?: boolean
   requestId?: string
+  // Code review specific fields
+  isCodeReview?: boolean
+  repoUrl?: string
+  filePaths?: string[]
+  // Error state for retry
+  error?: string
+  // Future: Polling/SQS support
+  jobId?: string
+  polling?: boolean
 }
 
+const STORAGE_KEY = "sandbox-chat-messages"
+
 export default function LambdaChatPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    { role: "system", content: "Ask me anything", timestamp: new Date() }
-  ])
+  // Load messages from localStorage on init
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY)
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          // Convert timestamp strings back to Date objects
+          return parsed.map((m: any) => ({
+            ...m,
+            timestamp: new Date(m.timestamp)
+          }))
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+    return [{ role: "system", content: "Ask me anything", timestamp: new Date() }]
+  })
+  
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [userMessageCount, setUserMessageCount] = useState(0)
+  const [userHasScrolled, setUserHasScrolled] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  
-  // GitHub repo review state
-  const [repoReview, setRepoReview] = useState<{
-    url: string
-    markdown: string
-    isLoading: boolean
-  } | null>(null)
-  const [pendingRepoAnalysis, setPendingRepoAnalysis] = useState<{
-    url: string
-    focus: string
-  } | null>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
 
-  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-
-  useEffect(() => { scrollToBottom() }, [messages])
-
-  // Handle pending repo analysis
+  // Persist messages to localStorage
   useEffect(() => {
-    if (pendingRepoAnalysis) {
-      setRepoReview({ url: pendingRepoAnalysis.url, markdown: '', isLoading: true })
-      const focusText = pendingRepoAnalysis.focus ? ` Focus: ${pendingRepoAnalysis.focus}.` : ''
-      const reviewQuery = `Please review this GitHub repository: ${pendingRepoAnalysis.url}.${focusText} Use the iterative review pattern: fetch tree, select files, fetch files, review, iterate.`
-      
-      const userMessage: Message = { 
-        role: "user", 
-        content: reviewQuery, 
-        timestamp: new Date() 
-      }
-      setMessages(prev => [...prev, userMessage])
-      setPendingRepoAnalysis(null)
-    }
-  }, [pendingRepoAnalysis])
-
-  // Check for completed review in assistant messages
-  useEffect(() => {
-    const lastMessage = messages[messages.length - 1]
-    if (lastMessage && lastMessage.role === "assistant" && !lastMessage.isLoading) {
-      if (lastMessage.content.includes("## Code Review:") && repoReview) {
-        setRepoReview(prev => prev ? { ...prev, markdown: lastMessage.content, isLoading: false } : null)
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(messages))
+      } catch {
+        // Ignore quota errors
       }
     }
-  }, [messages, repoReview])
+  }, [messages])
+
+  // Smart scroll: only auto-scroll if user hasn't scrolled up
+  const scrollToBottom = useCallback(() => {
+    if (!userHasScrolled) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [userHasScrolled])
+
+  // Track user scroll position
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget
+    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 50
+    setUserHasScrolled(!isAtBottom)
+  }, [])
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages, scrollToBottom])
+
+  // Extract file paths from markdown
+  const extractFilePaths = (md: string): string[] => {
+    const matches = md.match(/`([^`]+\.(?:py|ts|tsx|java|go))`/g)
+    if (!matches) return []
+    const seen: Record<string, boolean> = {}
+    return matches
+      .map(m => m.slice(1, -1))
+      .filter(path => {
+        if (seen[path]) return false
+        seen[path] = true
+        return true
+      })
+  }
+
+  // Extract repo URL from review content
+  const extractRepoUrl = (content: string): string => {
+    const match = content.match(/https?:\/\/github\.com\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+/)
+    return match?.[0] || ''
+  }
+
+  // Detect if query is a repo review request
+  const isRepoReviewQuery = (query: string): boolean => {
+    const githubUrlMatch = query.match(/https?:\/\/github\.com\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+/)
+    const reviewKeywords = /review|analyze|audit|check|look at|examine|inspect|assess|evaluate/i
+    return !!githubUrlMatch && reviewKeywords.test(query)
+  }
+
+  // SSE streaming helper
+  const streamResponse = async (
+    res: Response,
+    onChunk: (chunk: string) => void,
+    onDone: (requestId?: string) => void,
+    onError: (error: string) => void
+  ) => {
+    const reader = res.body?.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    if (!reader) {
+      onError('No response body')
+      return
+    }
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data === '[DONE]') {
+              onDone()
+              return
+            }
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.response) {
+                onChunk(parsed.response)
+              }
+              if (parsed.error) {
+                onError(parsed.error)
+                return
+              }
+              if (parsed.requestId) {
+                // Store requestId for later use
+                onDone(parsed.requestId)
+              }
+            } catch {
+              // Ignore parse errors for incomplete chunks
+            }
+          }
+        }
+      }
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Streaming error')
+    }
+  }
 
   const formatJson = (str: string): string => {
     try { return JSON.stringify(JSON.parse(str), null, 2) } catch { return str }
@@ -123,87 +223,8 @@ export default function LambdaChatPage() {
     if (!input.trim() || isLoading) return
 
     const query = input.trim()
-    
-    // Check if input contains a GitHub URL (anywhere in the text)
-    const githubUrlMatch = query.match(/https?:\/\/github\.com\/([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)/)
-    
-    // Check for review-related intent keywords
-    const reviewKeywords = /review|analyze|audit|check|look at|examine|inspect|assess|evaluate/i
-    const hasReviewIntent = reviewKeywords.test(query)
-    
-    // If GitHub URL found AND review intent detected, trigger repo analysis
-    if (githubUrlMatch && hasReviewIntent) {
-      const url = githubUrlMatch[0]
-      // Extract focus from query if present
-      const focusMatch = query.match(/focus(?:ed)?\s+(?:on\s+)?(security|performance|architecture|best.?practices?|style|patterns?|maintainability)/i)
-      const focus = focusMatch ? focusMatch[1] : ''
-      setPendingRepoAnalysis({ url, focus })
-      setInput("")
-      return
-    }
-    
-    // Also trigger if the query IS just a GitHub URL (existing behavior)
-    if (githubUrlMatch && query.trim() === githubUrlMatch[0]) {
-      setPendingRepoAnalysis({ url: githubUrlMatch[0], focus: '' })
-      setInput("")
-      return
-    }
-
-    // Build conversation history for context (only user messages to avoid PII issues)
-    const history = messages
-      .filter((m) => m.role === "user" && !m.isLoading)
-      .slice(-5)  // Last 5 user messages
-      .map((m) => `User: ${m.content}`)
-      .join("\n")
-
-    const payload = { query, history }
-
-    const userMessage: Message = { role: "user", content: query, timestamp: new Date() }
-    const assistantMessage: Message = { role: "assistant", content: "", timestamp: new Date(), isLoading: true }
-
-    setMessages((prev) => [...prev, userMessage, assistantMessage])
-    setIsLoading(true)
     setInput("")
-
-    try {
-      const res = await fetch("/api/lambda/invoke", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ payload }),
-      })
-
-      const data = await res.json()
-
-      setMessages((prev) =>
-        prev.map((m) =>
-          m === assistantMessage
-            ? { ...m, content: data.success ? data.response : data.error, isLoading: false, requestId: data.requestId }
-            : m
-        )
-      )
-
-      if (data.success) {
-        // Use setTimeout to ensure state update is processed
-        setTimeout(() => {
-          setMessages((current) => {
-            checkAndSummarize(current)
-            return current
-          })
-        }, 0)
-      }
-    } catch (err) {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m === assistantMessage
-            ? { ...m, content: "Network Error: " + (err instanceof Error ? err.message : "Unknown"), isLoading: false }
-            : m
-        )
-      )
-    } finally {
-      setIsLoading(false)
-    }
+    await handleQuickQuery(query)
   }
 
   const handleQuickQuery = async (query: string) => {
@@ -216,48 +237,129 @@ export default function LambdaChatPage() {
       .map((m) => `User: ${m.content}`)
       .join("\n")
 
+    const isRepoReview = isRepoReviewQuery(query)
+    
+    // FUTURE: Route large repos to polling (SQS + Worker Lambda)
+    // For now, always use streaming (isLargeRepoReview = false)
+    // When backend polling is ready, implement logic like:
+    // const isLargeRepoReview = isRepoReview && await checkRepoSize(url) > THRESHOLD
+    const isLargeRepoReview = false
+    
     setIsLoading(true)
     const userMessage: Message = { role: "user", content: query, timestamp: new Date() }
-    const assistantMessage: Message = { role: "assistant", content: "", timestamp: new Date(), isLoading: true }
+    const assistantMessage: Message = { 
+      role: "assistant", 
+      content: "", 
+      timestamp: new Date(), 
+      isLoading: true,
+      isCodeReview: isRepoReview,
+      repoUrl: isRepoReview ? extractRepoUrl(query) : undefined,
+      // Future: polling fields
+      polling: isLargeRepoReview,
+    }
     
     setMessages((prev) => [...prev, userMessage, assistantMessage])
     
+    // FUTURE: If isLargeRepoReview, route to polling instead of streaming
+    // if (isLargeRepoReview) {
+    //   const jobId = await startRepoReview(extractRepoUrl(query), extractFocus(query))
+    //   setMessages(prev => prev.map(m => m === assistantMessage ? { ...m, jobId } : m))
+    //   // Polling would be handled by useRepoReviewJob hook
+    //   return
+    // }
+    
     try {
+      const headers: Record<string, string> = { 
+        "Content-Type": "application/json",
+      }
+      
+      // Use streaming for repo reviews
+      if (isRepoReview) {
+        headers["Accept"] = "text/event-stream"
+      }
+      
       const res = await fetch("/api/lambda/invoke", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({ payload: { query, history } }),
       })
-      const data = await res.json()
       
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg === assistantMessage
-            ? {
-                ...msg,
-                content: data.success
-                  ? data.response
-                  : "Error" + (data.requestId ? " (RequestId: " + data.requestId + ")" : "") + "\n" + formatJson(JSON.stringify(data.error)),
-                isLoading: false,
-                requestId: data.requestId,
-              }
-            : msg
+      if (isRepoReview && res.body) {
+        // Streaming response
+        let accumulatedContent = ''
+        let requestId: string | undefined
+        
+        await streamResponse(
+          res,
+          (chunk) => {
+            accumulatedContent += chunk
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg === assistantMessage
+                  ? { ...msg, content: accumulatedContent }
+                  : msg
+              )
+            )
+          },
+          (reqId) => {
+            requestId = reqId
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg === assistantMessage
+                  ? { ...msg, content: accumulatedContent, isLoading: false, requestId }
+                  : msg
+              )
+            )
+            // Check if we need to summarize after this exchange
+            setTimeout(() => {
+              setMessages((current) => {
+                checkAndSummarize(current)
+                return current
+              })
+            }, 0)
+          },
+          (error) => {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg === assistantMessage
+                  ? { ...msg, content: "", error: error, isLoading: false }
+                  : msg
+              )
+            )
+          }
         )
-      )
-      // Check if we need to summarize after this exchange
-      setTimeout(() => {
-        setMessages((current) => {
-          checkAndSummarize(current)
-          return current
-        })
-      }, 0)
+      } else {
+        // Non-streaming response (regular queries)
+        const data = await res.json()
+        
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg === assistantMessage
+              ? {
+                  ...msg,
+                  content: data.success ? data.response : "",
+                  error: data.success ? undefined : (data.error || "Unknown error"),
+                  isLoading: false,
+                  requestId: data.requestId,
+                }
+              : msg
+          )
+        )
+        // Check if we need to summarize after this exchange
+        if (data.success) {
+          setTimeout(() => {
+            setMessages((current) => {
+              checkAndSummarize(current)
+              return current
+            })
+          }, 0)
+        }
+      }
     } catch (err) {
       setMessages((prev) =>
         prev.map((msg) =>
           msg === assistantMessage
-            ? { ...msg, content: "Network Error: " + (err instanceof Error ? err.message : "Unknown"), isLoading: false }
+            ? { ...msg, content: "", error: "Network Error: " + (err instanceof Error ? err.message : "Unknown"), isLoading: false }
             : msg
         )
       )
@@ -274,12 +376,34 @@ export default function LambdaChatPage() {
   }
 
   const handleRepoAnalyze = (url: string, focus?: string) => {
-    setPendingRepoAnalysis({ url, focus: focus || '' })
+    const focusText = focus ? ` Focus: ${focus}.` : ''
+    const reviewQuery = `Please review this GitHub repository: ${url}.${focusText} Use the iterative review pattern: fetch tree, select files, fetch files, review, iterate.`
+    
+    // Add user message to chat
+    const userMessage: Message = {
+      role: "user",
+      content: reviewQuery,
+      timestamp: new Date()
+    }
+    setMessages(prev => [...prev, userMessage])
+    
+    // Trigger the Lambda call (similar to handleQuickQuery)
+    handleQuickQuery(reviewQuery)
   }
 
   const handleRequestMoreFiles = (filePaths: string[]) => {
     const followup = `Please also review these files: ${filePaths.join(', ')}`
-    setMessages(prev => [...prev, { role: "user", content: followup, timestamp: new Date() }])
+    
+    // Add follow-up as user message
+    const userMessage: Message = {
+      role: "user",
+      content: followup,
+      timestamp: new Date()
+    }
+    setMessages(prev => [...prev, userMessage])
+    
+    // Trigger Lambda call for the follow-up
+    handleQuickQuery(followup)
   }
 
   return (
@@ -321,7 +445,14 @@ export default function LambdaChatPage() {
 
         {/* Chat Interface */}
         <div className="rounded-2xl border border-line bg-ink-soft/70 p-4 backdrop-blur-sm flex flex-col h-[60vh] min-h-[400px]">
-          <div className="flex-1 overflow-y-auto space-y-4 pb-4">
+          <div
+            ref={messagesContainerRef}
+            className="flex-1 overflow-y-auto space-y-4 pb-4"
+            onScroll={handleScroll}
+            role="log"
+            aria-live="polite"
+            aria-label="Chat messages"
+          >
             {messages.map((message, index) => {
               if (message.role === "system" && message.content.startsWith("Conversation summary:")) {
                 return (
@@ -334,6 +465,54 @@ export default function LambdaChatPage() {
                 return null
               }
 
+              // Detect code review messages
+              const isCodeReview = message.role === "assistant" && 
+                message.content.includes("## Code Review:") && 
+                !message.isLoading
+
+              if (isCodeReview) {
+                const repoUrl = message.repoUrl || extractRepoUrl(message.content)
+                const filePaths = message.filePaths || extractFilePaths(message.content)
+                
+                return (
+                  <div
+                    key={index}
+                    className="flex gap-3"
+                  >
+                    <div className="flex-1 max-w-[85%]">
+                      <CodeReviewMessage
+                        content={message.content}
+                        repoUrl={repoUrl}
+                        filePaths={filePaths}
+                        onRequestMoreFiles={handleRequestMoreFiles}
+                        timestamp={message.timestamp}
+                        isLoading={message.isLoading}
+                      />
+                      {message.requestId && (
+                        <p className="mt-1 text-xs text-muted text-right">
+                          RequestId: {message.requestId}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              }
+
+              // Retry handler for failed messages
+              const handleRetry = (msg: Message) => {
+                if (msg.role === "assistant" && msg.error) {
+                  // Re-send the user message that triggered this
+                  const userMsgIndex = messages.findIndex(m => m === msg) - 1
+                  if (userMsgIndex >= 0) {
+                    const userMsg = messages[userMsgIndex]
+                    if (userMsg?.role === "user") {
+                      handleQuickQuery(userMsg.content)
+                    }
+                  }
+                }
+              }
+
+              // Regular message rendering
               return (
                 <div
                   key={index}
@@ -346,6 +525,8 @@ export default function LambdaChatPage() {
                       className={`inline-block rounded-2xl px-4 py-2 text-sm ${
                         message.role === "user"
                           ? "bg-brass text-ink"
+                          : message.error
+                          ? "bg-red-900/30 text-red-200 border border-red-500/50"
                           : "bg-ink text-paper border border-line"
                       }`}
                     >
@@ -353,6 +534,21 @@ export default function LambdaChatPage() {
                         <div className="flex items-center gap-2">
                           <div className="w-4 h-4 border-2 border-brass border-t-transparent rounded-full animate-spin" />
                           <span>Thinking...</span>
+                        </div>
+                      ) : message.error ? (
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2 text-red-300">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <span>Error: {message.error}</span>
+                          </div>
+                          <button
+                            onClick={() => handleRetry(message)}
+                            className="text-xs text-brass-hot hover:underline self-start"
+                          >
+                            Retry
+                          </button>
                         </div>
                       ) : (
                         <>
@@ -384,7 +580,7 @@ export default function LambdaChatPage() {
                         </>
                       )}
                     </div>
-                    {message.requestId && (
+                    {message.requestId && !message.error && (
                       <p className="mt-1 text-xs text-muted">
                         RequestId: {message.requestId}
                       </p>
@@ -456,17 +652,6 @@ export default function LambdaChatPage() {
       <footer className="border-t border-line px-5 py-10 text-center text-sm text-muted">
         © {new Date().getFullYear()} Daniel Pham • Software Engineer • Built to last.
       </footer>
-
-      {/* Repo Review Panel */}
-      {repoReview && (
-        <RepoReviewPanel
-          repoUrl={repoReview.url}
-          reviewMarkdown={repoReview.markdown}
-          isLoading={repoReview.isLoading}
-          onClose={() => setRepoReview(null)}
-          onRequestMoreFiles={handleRequestMoreFiles}
-        />
-      )}
     </div>
   )
 }
