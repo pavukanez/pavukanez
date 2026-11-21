@@ -702,12 +702,8 @@ export default function LambdaChatPage() {
               )
             })}
             <div ref={messagesEndRef} />
-          </div>
-
-          {/* Bottom Controls - Fixed at bottom of chat container */}
-          <div className="flex flex-col border-t border-line bg-ink/50">
             {messages.length > 1 && !isLoading && (
-              <div className="p-4 text-center border-b border-line">
+              <div className="mt-6 text-center">
                 <button
                   onClick={handleNewChat}
                   className="text-xs text-muted hover:text-brass-hot transition"
@@ -717,9 +713,10 @@ export default function LambdaChatPage() {
                 </button>
               </div>
             )}
+          </div>
 
-            {/* Quick Query Buttons */}
-            <div className="p-4">
+          {/* Quick Query Buttons */}
+          <div className="border-t border-line p-4 bg-ink/50">
             <div className="flex gap-2 mb-3 overflow-x-auto scroll-snap-x snap-mandatory pb-2 -mx-4 px-4 scrollbar-hide">
               <button
                 type="button"
@@ -771,7 +768,6 @@ export default function LambdaChatPage() {
               </div>
             </form>
             <p className="mt-2 text-xs text-muted text-center">Press Enter to send · Shift+Enter for new line</p>
-          </div>
           </div>
         </div>
       </main>
