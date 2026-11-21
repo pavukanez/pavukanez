@@ -1,26 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb'
+import { unmarshall } from '@aws-sdk/util-dynamodb'
 
-// In-memory store (shared with POST endpoint in production use DynamoDB)
-const jobStore = new Map<string, {
-  status: 'pending' | 'running' | 'completed' | 'failed'
-  progress: string
-  partialResult?: string
-  result?: string
-  error?: string
-  createdAt: number
-  updatedAt: number
-}>()
+const TABLE_NAME = process.env.REPO_REVIEW_TABLE_NAME || 'repo-review-jobs'
+const AWS_REGION = process.env.AWS_REGION || 'us-east-2'
 
-// For demo, we'll use a global reference
-// In production, this would be DynamoDB
-declare global {
-  var __repoReviewJobs: Map<string, any> | undefined
-}
-
-const store = global.__repoReviewJobs || jobStore
-if (!global.__repoReviewJobs) {
-  global.__repoReviewJobs = store
-}
+const dynamoClient = new DynamoDBClient({ region: AWS_REGION })
 
 export async function GET(
   request: NextRequest,
@@ -35,24 +20,37 @@ export async function GET(
     )
   }
 
-  const job = store.get(jobId)
+  try {
+    const result = await dynamoClient.send(new GetItemCommand({
+      TableName: TABLE_NAME,
+      Key: { jobId: { S: jobId } },
+    }))
 
-  if (!job) {
+    if (!result.Item) {
+      return NextResponse.json(
+        { success: false, error: 'Job not found' },
+        { status: 404 }
+      )
+    }
+
+    const job = unmarshall(result.Item)
+
+    return NextResponse.json({
+      success: true,
+      jobId: job.jobId,
+      status: job.status,
+      progress: job.progress,
+      partialResult: job.partialResult || '',
+      result: job.result || '',
+      error: job.error || '',
+      createdAt: job.createdAt,
+      updatedAt: job.updatedAt,
+    })
+  } catch (error) {
+    console.error('Error fetching job:', error)
     return NextResponse.json(
-      { success: false, error: 'Job not found' },
-      { status: 404 }
+      { success: false, error: 'Failed to fetch job' },
+      { status: 500 }
     )
   }
-
-  return NextResponse.json({
-    success: true,
-    jobId,
-    status: job.status,
-    progress: job.progress,
-    partialResult: job.partialResult || '',
-    result: job.result || '',
-    error: job.error || '',
-    createdAt: job.createdAt,
-    updatedAt: job.updatedAt,
-  })
 }
