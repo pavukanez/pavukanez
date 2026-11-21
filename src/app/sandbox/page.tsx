@@ -492,23 +492,15 @@ export default function LambdaChatPage() {
             Daniel Pham
           </a>
           <div className="flex gap-6 text-muted items-center">
-            <a href="#experience" className="transition hover:text-brass-hot">
+            <a href="/#experience" className="transition hover:text-brass-hot">
               Experience
             </a>
-            <a href="#skills" className="transition hover:text-brass-hot">
+            <a href="/#skills" className="transition hover:text-brass-hot">
               Skills
             </a>
             <a href="/sandbox" className="transition hover:text-brass-hot">
               Sandbox
             </a>
-            <button
-              onClick={handleNewChat}
-              disabled={isLoading}
-              className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30 whitespace-nowrap"
-              title="Start a new conversation"
-            >
-              New Chat
-            </button>
           </div>
         </nav>
       </header>
@@ -523,10 +515,20 @@ export default function LambdaChatPage() {
               gh-repo-reviewer
             </h2>
           </div>
-          <p className="max-w-md text-sm leading-relaxed text-muted md:text-right">
-            Ask me anything or paste a GitHub repo URL to get an iterative code review covering security, best practices, performance, and architecture. 
-            Supports Python, TypeScript, Java, and Go. Public repos only.
-          </p>
+          <div className="flex flex-col items-start gap-2 md:flex-row md:items-end md:justify-between w-full md:w-auto">
+            <p className="max-w-md text-sm leading-relaxed text-muted md:text-right">
+              Ask me anything or paste a GitHub repo URL to get an iterative code review covering security, best practices, performance, and architecture. 
+              Supports Python, TypeScript, Java, and Go. Public repos only.
+            </p>
+            <button
+              onClick={handleNewChat}
+              disabled={isLoading}
+              className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30 whitespace-nowrap"
+              title="Start a new conversation"
+            >
+              New Chat
+            </button>
+          </div>
         </div>
 
         {/* Chat Interface */}
