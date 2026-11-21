@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import ReactMarkdown from "react-markdown"
 import CodeReviewMessage from "@/components/CodeReviewMessage"
+import { useRepoReviewPolling, startRepoReview, RepoReviewJob } from "@/hooks/useRepoReviewPolling"
 
 interface Message {
   role: "user" | "assistant" | "system"
@@ -50,6 +51,9 @@ export default function LambdaChatPage() {
   const [userHasScrolled, setUserHasScrolled] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+  
+  // Polling for large repo reviews
+  const { currentJob: pollingJob, startReview: startPollingReview, isPolling } = useRepoReviewPolling()
 
   // Persist messages to localStorage
   useEffect(() => {
@@ -105,6 +109,41 @@ export default function LambdaChatPage() {
     const githubUrlMatch = query.match(/https?:\/\/github\.com\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+/)
     const reviewKeywords = /review|analyze|audit|check|look at|examine|inspect|assess|evaluate/i
     return !!githubUrlMatch && reviewKeywords.test(query)
+  }
+
+  // Extract focus from query
+  const extractFocus = (query: string): string => {
+    const focusMatch = query.match(/focus(?:ed)?\s+(?:on\s+)?(security|performance|architecture|best.?practices?|style|patterns?|maintainability)/i)
+    return focusMatch ? focusMatch[1] : ''
+  }
+
+  // Check if repo is large (size > 50MB or files > 1000)
+  const isLargeRepo = async (url: string): Promise<boolean> => {
+    try {
+      const match = url.match(/github\.com\/([^/]+)\/([^/]+)/)
+      if (!match) return false
+      
+      const [, owner, repo] = match
+      const cleanRepo = repo.replace('.git', '')
+      
+      const res = await fetch(`https://api.github.com/repos/${owner}/${cleanRepo}`, {
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+        },
+      })
+      
+      if (!res.ok) return false
+      
+      const data = await res.json()
+      const sizeKB = data.size || 0
+      const sizeMB = sizeKB / 1024
+      
+      // Consider large if > 50MB or if we can't determine
+      return sizeMB > 50
+    } catch {
+      // If we can't check, default to streaming (safer)
+      return false
+    }
   }
 
   // SSE streaming helper
@@ -239,11 +278,46 @@ export default function LambdaChatPage() {
 
     const isRepoReview = isRepoReviewQuery(query)
     
-    // FUTURE: Route large repos to polling (SQS + Worker Lambda)
-    // For now, always use streaming (isLargeRepoReview = false)
-    // When backend polling is ready, implement logic like:
-    // const isLargeRepoReview = isRepoReview && await checkRepoSize(url) > THRESHOLD
-    const isLargeRepoReview = false
+    // Check if this is a large repo that should use polling
+    const repoUrl = isRepoReview ? extractRepoUrl(query) : ''
+    const isLargeRepoReview = Boolean(isRepoReview && repoUrl && await isLargeRepo(repoUrl))
+    
+    // For large repos, use polling instead of streaming
+    if (isLargeRepoReview && repoUrl) {
+      setIsLoading(true)
+      const userMessage: Message = { role: "user", content: query, timestamp: new Date() }
+      const assistantMessage: Message = { 
+        role: "assistant", 
+        content: "", 
+        timestamp: new Date(), 
+        isLoading: true,
+        isCodeReview: true,
+        repoUrl,
+        polling: true,
+      }
+      
+      setMessages((prev) => [...prev, userMessage, assistantMessage])
+      
+      try {
+        const jobId = await startPollingReview(repoUrl, extractFocus(query) || '')
+        setMessages((prev) => 
+          prev.map((msg) => 
+            msg === assistantMessage ? { ...msg, jobId } : msg
+          )
+        )
+      } catch (err) {
+        setMessages((prev) => 
+          prev.map((msg) => 
+            msg === assistantMessage 
+              ? { ...msg, content: "Error starting review: " + (err instanceof Error ? err.message : "Unknown"), isLoading: false, error: "Failed to start review" }
+              : msg
+          )
+        )
+      } finally {
+        setIsLoading(false)
+      }
+      return
+    }
     
     setIsLoading(true)
     const userMessage: Message = { role: "user", content: query, timestamp: new Date() }
@@ -259,14 +333,6 @@ export default function LambdaChatPage() {
     }
     
     setMessages((prev) => [...prev, userMessage, assistantMessage])
-    
-    // FUTURE: If isLargeRepoReview, route to polling instead of streaming
-    // if (isLargeRepoReview) {
-    //   const jobId = await startRepoReview(extractRepoUrl(query), extractFocus(query))
-    //   setMessages(prev => prev.map(m => m === assistantMessage ? { ...m, jobId } : m))
-    //   // Polling would be handled by useRepoReviewJob hook
-    //   return
-    // }
     
     try {
       const headers: Record<string, string> = { 
@@ -453,6 +519,40 @@ export default function LambdaChatPage() {
             aria-live="polite"
             aria-label="Chat messages"
           >
+            {/* Polling job progress display */}
+            {(pollingJob && (pollingJob.status === 'pending' || pollingJob.status === 'running')) && (
+              <div
+                key="polling-job"
+                className="flex gap-3"
+              >
+                <div className="flex-1 max-w-[85%]">
+                  <div className="bg-ink text-paper border border-line rounded-2xl px-4 py-3 text-sm">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted">Repository Review (Async)</span>
+                        <span className="text-xs text-muted font-mono truncate max-w-xs">
+                          {pollingJob.jobId.slice(0, 8)}...
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs text-brass-hot">
+                        {pollingJob.status === 'pending' ? '⏳' : '🔄'} {pollingJob.progress}
+                      </span>
+                    </div>
+                    {pollingJob.partialResult && (
+                      <div className="prose prose-invert max-w-none text-sm">
+                        <ReactMarkdown>{pollingJob.partialResult}</ReactMarkdown>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="w-4 h-4 border-2 border-brass border-t-transparent rounded-full animate-spin" />
+                      <span className="text-xs text-muted">Processing in background... refresh safe</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {messages.map((message, index) => {
               if (message.role === "system" && message.content.startsWith("Conversation summary:")) {
                 return (

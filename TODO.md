@@ -46,12 +46,37 @@
     - [x] 4.3 Add route detection prep: `isLargeRepoReview` flag (default false for now)
     - [x] 4.4 Render logic: if `message.jobId` → use polling hook data
 
-- [ ] **Phase 5: Backend Polling Infrastructure (Future PR)**
-  - [ ] 5.1 `POST /api/repo-reviews` → enqueue SQS, return `{ jobId }`
-  - [ ] 5.2 Worker Lambda: process SQS → update DynamoDB with progress/partialResult
-  - [ ] 5.3 `GET /api/repo-reviews/{jobId}` → return `{ status, progress, partialResult, result }`
-  - [ ] 5.4 Frontend: flip `isLargeRepoReview = true` for large repos
-  - [ ] 5.5 Add jobId to URL: `/sandbox?job=abc` for shareability
+- [x] **Phase 5: True Streaming from OpenRouter (Completed)**
+  - [x] 5.1 Added `invoke_agent_streaming()` async generator in `src/agent/graph.py`
+  - [x] 5.2 Updated `_streaming_response()` in `lambda_function.py` to use true streaming
+  - [x] 5.3 Added OpenRouter streaming support (`stream: true`, `Accept: text/event-stream`)
+  - [x] 5.4 Tool calls handled during streaming (accumulated, then executed)
+  - [x] 5.5 Deployment workflow updated to configure Function URL with `InvokeMode: RESPONSE_STREAM`
+  - [x] 5.6 Created `enable_streaming.sh` script for manual configuration
+
+- [x] **Phase 6: Backend Polling Infrastructure (SQS + Worker Lambda) — 🟡 High**
+  - [x] 6.1 Backend Infrastructure (Frontend API layer complete)
+    - [x] 6.1.1 Create API: POST /api/repo-reviews → enqueue job, return { jobId }
+    - [x] 6.1.2 Create API: GET /api/repo-reviews/{jobId} → poll progress/result
+    - [ ] 6.1.3 Create SQS queue + Dead Letter Queue (Terraform/CDK or manual)
+    - [ ] 6.1.4 Create DynamoDB table for job status (jobId PK, TTL 7 days)
+    - [ ] 6.1.5 Create Worker Lambda (SQS-triggered, 5-min timeout)
+  - [ ] 6.2 Worker Lambda Implementation
+    - [ ] 6.2.1 Process SQS messages with repo review logic
+    - [ ] 6.2.2 Update DynamoDB with progress (fetching tree, selecting files, reading files, generating review)
+    - [ ] 6.2.3 Store partialResult incrementally for polling
+    - [ ] 6.2.4 Handle retries (max 3) and DLQ for failed jobs
+  - [x] 6.3 Frontend Integration
+    - [x] 6.3.1 Update `useRepoReviewPolling.ts` with real implementation
+    - [x] 6.3.2 Add `isLargeRepoReview` detection (repo size > 50MB via GitHub API)
+    - [x] 6.3.3 Route large reviews to polling, small to streaming
+    - [x] 6.3.4 Display progress badge in chat during polling
+    - [ ] 6.3.5 Add jobId to URL for shareability: `/sandbox?job=abc`
+  - [ ] 6.4 Testing & Polish
+    - [ ] 6.4.1 Test with large repo (facebook/react)
+    - [ ] 6.4.2 Verify progress updates in chat
+    - [ ] 6.4.3 Test job recovery after page refresh
+    - [ ] 6.4.4 Test shareable URL
 
 ## Priority Legend
 - 🔴 Critical - Bugs affecting production

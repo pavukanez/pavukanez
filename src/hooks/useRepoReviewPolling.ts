@@ -1,12 +1,9 @@
 /**
  * Polling hook for async repo reviews (SQS + Worker Lambda)
  * 
- * This is a STUB implementation for future-proofing.
- * When backend polling infrastructure is ready, replace with real implementation.
- * 
- * Expected backend endpoints:
+ * Real implementation using API endpoints:
  * - POST /api/repo-reviews → { jobId }
- * - GET /api/repo-reviews/{jobId} → { status, progress, partialResult, result, error }
+ * - GET /api/repo-reviews/{jobId} → { status, progress, partialResult, result }
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -18,28 +15,31 @@ export interface RepoReviewJob {
   partialResult?: string
   result?: string
   error?: string
+  createdAt: number
+  updatedAt: number
 }
 
-// STUB: Simulates starting a repo review job
+// Start a repo review job
 export async function startRepoReview(
   url: string, 
   focus?: string
 ): Promise<string> {
-  // TODO: Replace with real API call when backend is ready
-  // const res = await fetch('/api/repo-reviews', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ url, focus })
-  // })
-  // const { jobId } = await res.json()
-  // return jobId
+  const res = await fetch('/api/repo-reviews', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, focus })
+  })
   
-  console.log('[STUB] startRepoReview called with:', { url, focus })
-  // Return a fake job ID for now
-  return `stub-job-${Date.now()}`
+  const data = await res.json()
+  
+  if (!data.success) {
+    throw new Error(data.error || 'Failed to start repo review')
+  }
+  
+  return data.jobId
 }
 
-// STUB: Polls for job progress
+// Poll for job progress
 export function useRepoReviewJob(jobId: string | null): RepoReviewJob | null {
   const [job, setJob] = useState<RepoReviewJob | null>(null)
   
@@ -54,45 +54,46 @@ export function useRepoReviewJob(jobId: string | null): RepoReviewJob | null {
       jobId,
       status: 'pending',
       progress: 'Queued...',
-      partialResult: ''
+      partialResult: '',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     })
     
-    // STUB: Simulate polling
-    // TODO: Replace with real polling when backend is ready
-    const interval = setInterval(async () => {
-      // const res = await fetch(`/api/repo-reviews/${jobId}`)
-      // const data = await res.json()
-      // setJob(data)
-      
-      // Stub simulation for testing
-      setJob(prev => {
-        if (!prev || prev.status === 'completed' || prev.status === 'failed') {
-          return prev
-        }
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/repo-reviews/${jobId}`)
+        const data = await res.json()
         
-        // Simulate progress
-        const steps = [
-          { status: 'running' as const, progress: 'Fetching file tree...', partialResult: '' },
-          { status: 'running' as const, progress: 'LLM selecting files...', partialResult: '## Code Review: ...' },
-          { status: 'running' as const, progress: 'Reading 25 files...', partialResult: '## Code Review:\n### Security\n- Found issues...' },
-          { status: 'completed' as const, progress: 'Done', partialResult: '## Code Review:\n### Security\n- Found issues...\n### Performance\n- Optimizations...' }
-        ]
-        
-        const currentStep = steps.findIndex(s => s.progress === prev.progress)
-        if (currentStep >= 0 && currentStep < steps.length - 1) {
-          return { ...prev, ...steps[currentStep + 1] }
+        if (data.success) {
+          setJob({
+            jobId: data.jobId,
+            status: data.status,
+            progress: data.progress,
+            partialResult: data.partialResult,
+            result: data.result,
+            error: data.error,
+            createdAt: data.createdAt,
+            updatedAt: data.updatedAt,
+          })
+          
+          // Continue polling if not done
+          if (data.status === 'pending' || data.status === 'running') {
+            setTimeout(poll, 2000)
+          }
         }
-        return prev
-      })
-    }, 3000)
+      } catch (err) {
+        console.error('Polling error:', err)
+        setTimeout(poll, 5000) // Retry on error
+      }
+    }
     
-    return () => clearInterval(interval)
+    poll()
   }, [jobId])
   
   return job
 }
 
-// STUB: Combined hook for easy use
+// Combined hook for easy use
 export function useRepoReviewPolling() {
   const [currentJob, setCurrentJob] = useState<RepoReviewJob | null>(null)
   
@@ -102,10 +103,43 @@ export function useRepoReviewPolling() {
       jobId,
       status: 'pending',
       progress: 'Queued...',
-      partialResult: ''
+      partialResult: '',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     })
     return jobId
   }, [])
+  
+  // Auto-poll when we have a job
+  useEffect(() => {
+    if (!currentJob || currentJob.status === 'completed' || currentJob.status === 'failed') {
+      return
+    }
+    
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/repo-reviews/${currentJob.jobId}`)
+        const data = await res.json()
+        
+        if (data.success) {
+          setCurrentJob(prev => prev ? {
+            ...prev,
+            status: data.status,
+            progress: data.progress,
+            partialResult: data.partialResult,
+            result: data.result,
+            error: data.error,
+            updatedAt: data.updatedAt,
+          } : null)
+        }
+      } catch (err) {
+        console.error('Polling error:', err)
+      }
+    }
+    
+    const interval = setInterval(poll, 2000)
+    return () => clearInterval(interval)
+  }, [currentJob?.jobId, currentJob?.status])
   
   return {
     currentJob,
