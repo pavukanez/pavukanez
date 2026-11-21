@@ -26,13 +26,13 @@ const STORAGE_KEY = "sandbox-chat-messages"
 
 export default function LambdaChatPage() {
   // Load messages from localStorage on init
-  const [messages, setMessages] = useState<Message[]>(() => {
+  // Initialize messages from localStorage or default
+  const getInitialMessages = () => {
     if (typeof window !== "undefined") {
       try {
         const stored = localStorage.getItem(STORAGE_KEY)
         if (stored) {
           const parsed = JSON.parse(stored)
-          // Convert timestamp strings back to Date objects
           return parsed.map((m: any) => ({
             ...m,
             timestamp: new Date(m.timestamp)
@@ -43,7 +43,9 @@ export default function LambdaChatPage() {
       }
     }
     return [{ role: "system", content: "Ask me anything", timestamp: new Date() }]
-  })
+  }
+
+  const [messages, setMessages] = useState<Message[]>(getInitialMessages)
   
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -51,6 +53,16 @@ export default function LambdaChatPage() {
   const [userHasScrolled, setUserHasScrolled] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
+
+  // Reset chat to initial state
+  const handleNewChat = useCallback(() => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(STORAGE_KEY)
+    }
+    setMessages(getInitialMessages())
+    setUserMessageCount(0)
+    setUserHasScrolled(false)
+  }, [])
   
   // Polling for large repo reviews
   const { currentJob: pollingJob, startReview: startPollingReview, isPolling } = useRepoReviewPolling()
@@ -479,7 +491,7 @@ export default function LambdaChatPage() {
           <a href="/" className="font-display text-lg tracking-tight text-paper">
             Daniel Pham
           </a>
-          <div className="flex gap-6 text-muted">
+          <div className="flex gap-6 text-muted items-center">
             <a href="#experience" className="transition hover:text-brass-hot">
               Experience
             </a>
@@ -489,6 +501,14 @@ export default function LambdaChatPage() {
             <a href="/sandbox" className="transition hover:text-brass-hot">
               Sandbox
             </a>
+            <button
+              onClick={handleNewChat}
+              disabled={isLoading}
+              className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30 whitespace-nowrap"
+              title="Start a new conversation"
+            >
+              New Chat
+            </button>
           </div>
         </nav>
       </header>
