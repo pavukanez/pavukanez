@@ -703,15 +703,15 @@ export default function LambdaChatPage() {
             })}
             <div ref={messagesEndRef} />
             {messages.length > 1 && !isLoading && (
-              <div className="mt-6 text-center">
+              <p className="mt-2 text-center text-xs text-muted/60">
                 <button
                   onClick={handleNewChat}
-                  className="text-xs text-muted hover:text-brass-hot transition"
+                  className="hover:text-brass-hot transition underline underline-offset-1"
                   title="Start a new conversation"
                 >
                   All set here? Start a new topic.
                 </button>
-              </div>
+              </p>
             )}
           </div>
 
