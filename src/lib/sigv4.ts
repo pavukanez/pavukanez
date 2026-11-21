@@ -91,6 +91,10 @@ export function createSignableRequest(
  * Stream response from Lambda Function URL
  * Yields parsed JSON chunks from the streaming response
  */
+// Default timeout for Lambda invocations (5 minutes for streaming, 2 minutes for non-streaming)
+const STREAMING_TIMEOUT_MS = 5 * 60 * 1000  // 5 minutes
+const NON_STREAMING_TIMEOUT_MS = 2 * 60 * 1000  // 2 minutes
+
 export async function* streamLambdaResponse(
   functionUrl: string,
   payload: { query: string; history?: string; stream?: boolean },
@@ -102,11 +106,21 @@ export async function* streamLambdaResponse(
   const signableRequest = createSignableRequest(functionUrl, 'POST', body, extraHeaders)
   const signedHeaders = await signRequest(signer, signableRequest)
   
-  const response = await fetch(functionUrl, {
-    method: 'POST',
-    headers: signedHeaders,
-    body,
-  })
+  // Add timeout for streaming requests
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), STREAMING_TIMEOUT_MS)
+  
+  let response: Response
+  try {
+    response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: signedHeaders,
+      body,
+      signal: controller.signal,
+    })
+  } finally {
+    clearTimeout(timeoutId)
+  }
   
   if (!response.ok) {
     const errorText = await response.text()
@@ -192,11 +206,21 @@ export async function callLambdaNonStreaming(
   const signableRequest = createSignableRequest(functionUrl, 'POST', body, extraHeaders)
   const signedHeaders = await signRequest(signer, signableRequest)
   
-  const response = await fetch(functionUrl, {
-    method: 'POST',
-    headers: signedHeaders,
-    body,
-  })
+  // Add timeout for non-streaming requests
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), NON_STREAMING_TIMEOUT_MS)
+  
+  let response: Response
+  try {
+    response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: signedHeaders,
+      body,
+      signal: controller.signal,
+    })
+  } finally {
+    clearTimeout(timeoutId)
+  }
   
   if (!response.ok) {
     const errorText = await response.text()

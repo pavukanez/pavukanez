@@ -129,7 +129,7 @@ export default function LambdaChatPage() {
     return focusMatch ? focusMatch[1] : ''
   }
 
-  // Check if repo is large (size > 50MB or files > 1000)
+  // Check if repo is large (size > 100MB or files > 500) - matches Lambda limits
   const isLargeRepo = async (url: string): Promise<boolean> => {
     try {
       const match = url.match(/github\.com\/([^/]+)\/([^/]+)/)
@@ -150,10 +150,11 @@ export default function LambdaChatPage() {
       const sizeKB = data.size || 0
       const sizeMB = sizeKB / 1024
       
-      // Consider large if > 50MB or if we can't determine
-      return sizeMB > 50
+      // Consider large if > 100MB (matches Lambda MAX_REPO_SIZE_MB)
+      // Could also check file count if we had tree data, but size is a good proxy
+      return sizeMB > 100
     } catch {
-      // If we can't check, default to streaming (safer)
+      // If we can't check, default to streaming (safer for smaller repos)
       return false
     }
   }
@@ -356,11 +357,19 @@ export default function LambdaChatPage() {
         headers["Accept"] = "text/event-stream"
       }
       
+      // Add timeout for API call (should be less than Lambda timeout)
+      const apiTimeout = isRepoReview ? 280000 : 30000 // 4min 40s for repo reviews, 30s for regular
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), apiTimeout)
+      
       const res = await fetch("/api/lambda/invoke", {
         method: "POST",
         headers,
         body: JSON.stringify({ payload: { query, history } }),
+        signal: controller.signal,
       })
+      
+      clearTimeout(timeoutId)
       
       if (isRepoReview && res.body) {
         // Streaming response
@@ -434,10 +443,23 @@ export default function LambdaChatPage() {
         }
       }
     } catch (err) {
+      let errorMessage = "Network Error: " + (err instanceof Error ? err.message : "Unknown")
+      
+      // Provide more helpful error messages for common issues
+      if (err instanceof Error) {
+        if (err.name === "AbortError" || err.message.includes("timeout") || err.message.includes("AbortError")) {
+          errorMessage = "Request timed out. The repository might be too large or the LLM is taking too long. Try a smaller repo or use the async review option."
+        } else if (err.message.includes("Failed to fetch") || err.message.includes("network")) {
+          errorMessage = "Network error. Please check your connection and try again."
+        } else if (err.message.includes("500") || err.message.includes("Internal server error")) {
+          errorMessage = "Server error. The Lambda function may have timed out. Try again or use a smaller repository."
+        }
+      }
+      
       setMessages((prev) =>
         prev.map((msg) =>
           msg === assistantMessage
-            ? { ...msg, content: "", error: "Network Error: " + (err instanceof Error ? err.message : "Unknown"), isLoading: false }
+            ? { ...msg, content: "", error: errorMessage, isLoading: false }
             : msg
         )
       )
