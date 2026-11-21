@@ -1,8 +1,8 @@
 /**
  * Polling hook for async repo reviews (SQS + Worker Lambda)
  * 
- * Real implementation using API endpoints:
- * - POST /api/repo-reviews → { jobId }
+ * Flow:
+ * - POST /api/lambda/invoke with repo review query → Lambda enqueues to SQS, returns { jobId }
  * - GET /api/repo-reviews/{jobId} → { status, progress, partialResult, result }
  */
 
@@ -19,15 +19,26 @@ export interface RepoReviewJob {
   updatedAt: number
 }
 
-// Start a repo review job
+// Start a repo review job via Lambda (which enqueues to SQS)
 export async function startRepoReview(
   url: string, 
   focus?: string
 ): Promise<string> {
-  const res = await fetch('/api/repo-reviews', {
+  // Build a query that the Lambda will recognize as a repo review
+  const focusText = focus ? ` Focus: ${focus}.` : ''
+  const query = `Please review this GitHub repository: ${url}.${focusText} Use the iterative review pattern: fetch tree, select files, fetch files, review, iterate.`
+  
+  const res = await fetch('/api/lambda/invoke', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url, focus })
+    body: JSON.stringify({ 
+      payload: { 
+        query, 
+        history: '',
+        // Signal to Lambda this is an async repo review request
+        asyncRepoReview: true 
+      } 
+    })
   })
   
   const data = await res.json()
@@ -36,7 +47,17 @@ export async function startRepoReview(
     throw new Error(data.error || 'Failed to start repo review')
   }
   
-  return data.jobId
+  // Lambda returns { success: true, jobId, status: 'pending', ... }
+  if (data.jobId) {
+    return data.jobId
+  }
+  
+  // Fallback: if Lambda returns requestId instead, use that
+  if (data.requestId) {
+    return data.requestId
+  }
+  
+  throw new Error('No jobId returned from Lambda')
 }
 
 // Poll for job progress

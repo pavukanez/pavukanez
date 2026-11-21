@@ -159,6 +159,9 @@ export async function POST(request: NextRequest) {
       response: lambdaResponse.response,
       model: lambdaResponse.model,
       usage: lambdaResponse.usage,
+      jobId: lambdaResponse.jobId,
+      status: lambdaResponse.status,
+      message: lambdaResponse.message,
       requestId,
     })
 

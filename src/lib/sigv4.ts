@@ -193,6 +193,10 @@ export interface LambdaNonStreamingResponse {
   response: string
   model?: string
   usage?: Record<string, any>
+  // Repo review async fields
+  jobId?: string
+  status?: string
+  message?: string
 }
 
 export async function callLambdaNonStreaming(
@@ -240,6 +244,9 @@ export async function callLambdaNonStreaming(
       response: parsedBody.response || '',
       model: parsedBody.model,
       usage: parsedBody.usage,
+      jobId: parsedBody.jobId,
+      status: parsedBody.status,
+      message: parsedBody.message,
     }
   }
   
