@@ -515,20 +515,10 @@ export default function LambdaChatPage() {
               gh-repo-reviewer
             </h2>
           </div>
-          <div className="flex flex-col items-start gap-2 md:flex-row md:items-end md:justify-between w-full md:w-auto">
-            <p className="max-w-md text-sm leading-relaxed text-muted md:text-right">
-              Ask me anything or paste a GitHub repo URL to get an iterative code review covering security, best practices, performance, and architecture. 
-              Supports Python, TypeScript, Java, and Go. Public repos only.
-            </p>
-            <button
-              onClick={handleNewChat}
-              disabled={isLoading}
-              className="rounded-lg border border-line bg-ink px-3 py-1.5 text-xs text-muted transition hover:border-brass hover:text-brass-hot disabled:opacity-30 whitespace-nowrap"
-              title="Start a new conversation"
-            >
-              New Chat
-            </button>
-          </div>
+          <p className="max-w-md text-sm leading-relaxed text-muted md:text-right">
+            Ask me anything or paste a GitHub repo URL to get an iterative code review covering security, best practices, performance, and architecture. 
+            Supports Python, TypeScript, Java, and Go. Public repos only.
+          </p>
         </div>
 
         {/* Chat Interface */}
@@ -712,6 +702,18 @@ export default function LambdaChatPage() {
               )
             })}
             <div ref={messagesEndRef} />
+            {messages.length > 1 && (
+              <div className="mt-6 text-center">
+                <button
+                  onClick={handleNewChat}
+                  disabled={isLoading}
+                  className="text-xs text-muted hover:text-brass-hot transition disabled:opacity-30"
+                  title="Start a new conversation"
+                >
+                  All set here? Start a new topic.
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Quick Query Buttons */}
