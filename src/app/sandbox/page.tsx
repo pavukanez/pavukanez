@@ -656,12 +656,12 @@ export default function LambdaChatPage() {
                     className={`flex-1 max-w-[85%] ${message.role === "user" ? "text-right" : ""}`}
                   >
                     <div
-                      className={`inline-block rounded-2xl px-4 py-2 text-sm select-text ${
+                      className={`inline-block rounded-2xl px-4 py-2 text-sm ${
                         message.role === "user"
-                          ? "bg-brass text-ink"
+                          ? "bg-brass text-ink selection:bg-brass-hot selection:text-ink"
                           : message.error
-                          ? "bg-red-900/30 text-red-200 border border-red-500/50"
-                          : "bg-ink text-paper border border-line"
+                          ? "bg-red-900/30 text-red-200 border border-red-500/50 selection:bg-red-700 selection:text-red-100"
+                          : "bg-ink text-paper border border-line selection:bg-brass-hot selection:text-ink"
                       }`}
                     >
                       {message.isLoading ? (
@@ -690,12 +690,12 @@ export default function LambdaChatPage() {
                             <ReactMarkdown
                               components={{
                                 code: ({ children, ...props }) => (
-                                  <code {...props} className="bg-ink/50 px-1.5 py-0.5 rounded text-xs font-mono text-brass-hot select-text">
+                                  <code {...props} className="bg-ink/50 px-1.5 py-0.5 rounded text-xs font-mono text-brass-hot selection:bg-brass-hot selection:text-ink">
                                     {children}
                                   </code>
                                 ),
                                 pre: ({ children, ...props }) => (
-                                  <pre {...props} className="bg-ink rounded-xl p-4 overflow-x-auto border border-line text-xs select-text">
+                                  <pre {...props} className="bg-ink rounded-xl p-4 overflow-x-auto border border-line text-xs selection:bg-brass-hot selection:text-ink">
                                     {children}
                                   </pre>
                                 ),
@@ -709,7 +709,7 @@ export default function LambdaChatPage() {
                               {message.content}
                             </ReactMarkdown>
                           ) : (
-                            <pre className="whitespace-pre-wrap break-words font-mono text-xs select-text">{message.content}</pre>
+                            <pre className="whitespace-pre-wrap break-words font-mono text-xs selection:bg-brass-hot selection:text-ink">{message.content}</pre>
                           )}
                         </div>
                       )}
