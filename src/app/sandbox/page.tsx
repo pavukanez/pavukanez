@@ -544,7 +544,7 @@ export default function LambdaChatPage() {
         </div>
 
         {/* Chat Interface */}
-        <div className="rounded-2xl border border-line bg-ink-soft/70 p-4 backdrop-blur-sm flex flex-col h-[60vh] min-h-[400px]">
+        <div className="rounded-2xl border border-line bg-ink-soft/70 p-4 backdrop-blur-sm flex flex-col h-[60vh] min-h-[400px] relative z-60">
           <div
             ref={messagesContainerRef}
             className="flex-1 overflow-y-auto space-y-4 pb-4"
@@ -685,7 +685,7 @@ export default function LambdaChatPage() {
                           </button>
                         </div>
                       ) : (
-                        <>
+                        <div className="select-text">
                           {message.role === "assistant" ? (
                             <ReactMarkdown
                               components={{
@@ -709,9 +709,9 @@ export default function LambdaChatPage() {
                               {message.content}
                             </ReactMarkdown>
                           ) : (
-                            <pre className="whitespace-pre-wrap break-words font-mono text-xs">{message.content}</pre>
+                            <pre className="whitespace-pre-wrap break-words font-mono text-xs select-text">{message.content}</pre>
                           )}
-                        </>
+                        </div>
                       )}
                     </div>
                     {message.requestId && !message.error && (
