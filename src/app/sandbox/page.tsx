@@ -656,7 +656,7 @@ export default function LambdaChatPage() {
                     className={`flex-1 max-w-[85%] ${message.role === "user" ? "text-right" : ""}`}
                   >
                     <div
-                      className={`inline-block rounded-2xl px-4 py-2 text-sm ${
+                      className={`inline-block rounded-2xl px-4 py-2 text-sm select-text ${
                         message.role === "user"
                           ? "bg-brass text-ink"
                           : message.error
@@ -690,12 +690,12 @@ export default function LambdaChatPage() {
                             <ReactMarkdown
                               components={{
                                 code: ({ children, ...props }) => (
-                                  <code {...props} className="bg-ink/50 px-1.5 py-0.5 rounded text-xs font-mono text-brass-hot">
+                                  <code {...props} className="bg-ink/50 px-1.5 py-0.5 rounded text-xs font-mono text-brass-hot select-text">
                                     {children}
                                   </code>
                                 ),
                                 pre: ({ children, ...props }) => (
-                                  <pre {...props} className="bg-ink rounded-xl p-4 overflow-x-auto border border-line text-xs">
+                                  <pre {...props} className="bg-ink rounded-xl p-4 overflow-x-auto border border-line text-xs select-text">
                                     {children}
                                   </pre>
                                 ),
